@@ -1,0 +1,75 @@
+/*
+  Ajustes visuais pontuais. Os nomes [data-testid=...] são internos do
+  Streamlit e podem mudar entre versões: a versão está fixa no
+  requirements.txt. Ao atualizar o Streamlit, confira o dashboard.
+  As cores usam transparência para funcionar nos temas claro e escuro.
+*/
+
+/* ---------- Cards de indicadores (efeito de vidro) ---------- */
+[data-testid="stMetric"] {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(139,92,246,0.08)) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(148,163,184,0.28) !important;
+  border-radius: 1rem !important;
+  padding: 1rem 1.1rem 0.9rem !important;
+  box-shadow: 0 4px 18px rgba(15,23,42,0.06);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+[data-testid="stMetric"]::before {
+  content: "";
+  position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+}
+[data-testid="stMetric"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(59,130,246,0.16);
+}
+[data-testid="stMetricLabel"] p {
+  font-size: 0.78rem !important;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  opacity: .8;
+}
+[data-testid="stMetricValue"] {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Espaço no topo (menu já fica no cabeçalho) ---------- */
+[data-testid="stMainBlockContainer"] { padding-top: 3.2rem !important; }
+
+/* ---------- Título das páginas ---------- */
+.ga-titulo h1 { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+.ga-sub { opacity: .7; margin-top: -.2rem; margin-bottom: .6rem; font-size: .95rem; }
+
+/* ---------- Linha do tempo do histórico ---------- */
+.ga-tl { border-left: 2px solid rgba(99,102,241,.45); margin-left: .4rem; padding-left: 1rem; }
+.ga-tl-item { position: relative; padding: .1rem 0 .9rem; }
+.ga-tl-item::before {
+  content: ""; position: absolute; left: -1.43rem; top: .45rem;
+  width: .7rem; height: .7rem; border-radius: 50%;
+  background: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.2);
+}
+.ga-tl-data { font-size: .78rem; opacity: .65; }
+.ga-tl-ev { font-weight: 600; }
+.ga-tl-det { font-size: .88rem; opacity: .85; }
+
+/* ---------- Tela de login ---------- */
+.ga-login-marca { text-align: center; margin: 2.5rem 0 1rem; }
+.ga-login-marca .ga-icone {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px; border-radius: 18px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white; font-size: 32px; box-shadow: 0 10px 30px rgba(99,102,241,.35);
+}
+.ga-login-marca h2 { margin: .8rem 0 0 !important; }
+.ga-login-marca p { opacity: .7; }
+
+/* ---------- Ajustes de celular ---------- */
+@media (max-width: 640px) {
+  [data-testid="stMetricValue"] { font-size: 1.5rem !important; }
+  .block-container { padding-left: 1rem !important; padding-right: 1rem !important; }
+}

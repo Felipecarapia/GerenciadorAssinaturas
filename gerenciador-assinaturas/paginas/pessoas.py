@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from componentes import dialogos
-from componentes.ui import base, baixar_excel, cabecalho, estado_vazio, reais
+from componentes.ui import base, baixar_excel, cabecalho, dataframe_limitado, estado_vazio, reais
 from servicos import calculos as calc
 
 dialogos.mostrar_aviso_pendente()
@@ -45,7 +45,7 @@ filtrado = filtrado.sort_values("Nome completo").reset_index(drop=True)
 
 b1, b2, b3, _ = st.columns([1.3, 1, 1, 4])
 st.caption(f"{len(filtrado)} de {len(func)} pessoa(s). Clique numa linha para ver o detalhe, editar ou excluir.")
-selecao = st.dataframe(
+selecao, pessoas_visiveis = dataframe_limitado(
     filtrado[["Nome completo", "E-mail", "Departamento", "Cargo", "Assinaturas", "Custo mensal"]]
     .assign(Assinaturas=filtrado["Assinaturas"].map(calc.separar_lista)),
     hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row", key="tabela_pessoas",
@@ -57,7 +57,7 @@ selecao = st.dataframe(
     },
 )
 linhas = selecao.selection.rows if selecao else []
-sel = filtrado.loc[linhas[0]] if linhas else None
+sel = filtrado.iloc[linhas[0]] if linhas and linhas[0] < len(pessoas_visiveis) else None
 
 if b1.button("Nova pessoa", type="primary", icon=":material/person_add:", width="stretch"):
     dialogos.abrir_pessoa()
@@ -78,9 +78,10 @@ if sel is not None:
         if det.empty:
             d2.info("Esta pessoa não usa nenhuma assinatura.")
         else:
-            d2.dataframe(det, hide_index=True, width="stretch", column_config={
+            with d2:
+                dataframe_limitado(det, key=f"detalhe_pessoa_{sel['ID']}", hide_index=True, width="stretch", column_config={
                 "Custo mensal total": st.column_config.NumberColumn("Custo mensal total (R$)", format="localized"),
                 "Parte da pessoa": st.column_config.NumberColumn("Parte da pessoa (R$)", format="localized"),
-            })
+                })
 
 baixar_excel(filtrado.drop(columns=["ID"]), "pessoas", "Pessoas", moedas=("Custo mensal",))

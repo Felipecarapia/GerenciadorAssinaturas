@@ -6,14 +6,15 @@ vence nos próximos dias.
 
 Implementa os requisitos RF-01 a RF-30 do plano de desenvolvimento.
 
-## Experimentar agora (sem Google)
+## Desenvolvimento local (sem Google)
 
-Sem credenciais do Google, o app abre em **modo local de demonstração**: os dados ficam
-em `dados_locais/planilha_local.xlsx` (mesmas abas e colunas da planilha real).
+O uso normal exige Google Sheets. Para desenvolvimento, o modo local precisa ser ativado
+explicitamente; os dados ficam em `dados_locais/planilha_local.xlsx`.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+$env:GA_FORCAR_LOCAL="1"     # PowerShell
 streamlit run app.py
 ```
 
@@ -24,7 +25,7 @@ Senha: `demo`. Na primeira tela, clique em **Carregar dados de exemplo** (20 ass
 
 ```
 app.py                     login + menu no topo (st.navigation)
-paginas/                   Dashboard, Assinaturas, Pessoas, Relatórios, Histórico, Pendências
+paginas/                   Dashboard, Assinaturas, Pessoas, Projetos, Relatórios, Histórico, Pendências
 servicos/planilha.py       ÚNICA camada que lê e grava (Google Sheets ou modo local)
 servicos/cadastros.py      validação, vínculos nos 2 sentidos, histórico, edição simultânea
 servicos/calculos.py       gasto mensal, alertas, custo por pessoa, evolução em 12 meses
@@ -82,6 +83,7 @@ PDFs. Se ele não estiver disponível, os PDFs usam gráficos equivalentes em ma
 | Cadastrar uma ferramenta | **Assinaturas › Nova assinatura**. Toda assinatura precisa de pelo menos 1 usuário, então cadastre as pessoas antes. |
 | Editar, excluir, ver histórico | Clique na linha da tabela e use os botões acima dela. |
 | Quem usa o quê / custo por pessoa | **Pessoas**: clique numa pessoa para ver as assinaturas e o custo mensal que ela representa (cada assinatura é dividida igualmente entre os usuários). |
+| Onde cada assinatura é usada | **Projetos**: cadastre o projeto e vincule suas assinaturas. O custo é dividido igualmente entre os projetos ativos que usam cada assinatura. |
 | Relatórios | **Relatórios**: prévia na tela e download em PDF ou Excel. |
 | Dados com problema | **Pendências**: cada item mostra aba e linha, com botão para corrigir no app. |
 | Tema claro/escuro | Menu **⋮ › Settings** (o Streamlit lembra a escolha no navegador). |

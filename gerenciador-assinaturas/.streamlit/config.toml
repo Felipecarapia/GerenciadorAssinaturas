@@ -4,6 +4,8 @@ showErrorDetails = "none"
 
 [server]
 runOnSave = false
+enableCORS = true
+enableXsrfProtection = true
 
 [browser]
 gatherUsageStats = false
@@ -19,24 +21,24 @@ chartCategoricalColors = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981",
 
 # ---------- Tema claro ----------
 [theme.light]
-primaryColor = "#2563eb"
-backgroundColor = "#f8fafc"
-secondaryBackgroundColor = "#eef2f7"
-textColor = "#0f172a"
-borderColor = "#dbe3ee"
+primaryColor = "#1d4ed8"
+backgroundColor = "#f7f9fc"
+secondaryBackgroundColor = "#edf2f8"
+textColor = "#10233f"
+borderColor = "#d8e1ec"
 linkColor = "#2563eb"
 
 [theme.light.sidebar]
-backgroundColor = "#eef2f7"
+backgroundColor = "#f1f5f9"
 
 # ---------- Tema escuro ----------
 [theme.dark]
-primaryColor = "#6366f1"
-backgroundColor = "#0f172a"
-secondaryBackgroundColor = "#1e293b"
-textColor = "#e2e8f0"
-borderColor = "#334155"
-linkColor = "#a78bfa"
+primaryColor = "#3b82f6"
+backgroundColor = "#0b1424"
+secondaryBackgroundColor = "#111f35"
+textColor = "#e5edf7"
+borderColor = "#293a52"
+linkColor = "#60a5fa"
 
 [theme.dark.sidebar]
-backgroundColor = "#111c33"
+backgroundColor = "#0d192b"

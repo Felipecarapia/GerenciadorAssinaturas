@@ -5,7 +5,9 @@ import pytest
 
 from servicos import cadastros
 from servicos.calculos import separar_lista
-from servicos.esquema import ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO
+from servicos.esquema import (
+    ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_PROJETOS, ABA_USOS_PROJETO,
+)
 
 
 def _pessoa(nome, email, assinaturas=()):
@@ -117,3 +119,90 @@ def test_pendencias(planilha_vazia):
     tipos = set(lista["Tipo"])
     assert {pendencias.T_INEXISTENTE, pendencias.T_EMAIL_DUP, pendencias.T_OBRIGATORIO} <= tipos
     assert (lista["Linha"] >= 2).all()
+
+
+def test_sem_falso_conflito_sem_alteracao(planilha_vazia):
+    p = planilha_vazia
+    ana = _pessoa("Ana Souza", "ana@empresa.com.br")
+    id_ = _assinatura("Figma", [ana], valor=100.0)
+    aberto = p.ler_registro(ABA_ASSINATURAS, id_)
+    # Salvando sem alterar nada não deve acusar falso conflito
+    salvo_id = cadastros.salvar_assinatura(
+        {"Nome": "Figma", "Categoria": "Design", "Plano": "Mensal", "Valor (R$)": 100.0,
+         "Vencimento": date(2026, 12, 1), "Status": "Ativa"}, [ana], original=aberto)
+    assert salvo_id == id_
+
+
+def test_registrar_pagamento_avanca_vencimento_e_grava_historico(planilha_vazia):
+    from servicos.calculos import para_data
+    p = planilha_vazia
+    ana = _pessoa("Ana Souza", "ana@empresa.com.br")
+    id_ = _assinatura("Figma", [ana], plano="Mensal")
+    original = p.ler_registro(ABA_ASSINATURAS, id_)
+    assert para_data(original["Vencimento"]) == date(2026, 12, 1)
+
+    novo_venc = cadastros.registrar_pagamento(id_, original)
+    assert novo_venc == date(2027, 1, 1)
+
+    # Verifica se atualizou na planilha
+    atualizado = p.ler_registro(ABA_ASSINATURAS, id_)
+    assert para_data(atualizado["Vencimento"]) == date(2027, 1, 1)
+
+    # Verifica se registrou evento no Histórico
+    hist = p.ler_fresco(ABA_HISTORICO)
+    ev_pag = hist[hist["Evento"] == "Pagamento registrado"]
+    assert not ev_pag.empty
+    registro = ev_pag.iloc[0]
+    assert registro["Assinatura"] == "Figma"
+    assert registro["Campo"] == "Vencimento"
+    assert registro["Valor anterior"] == "01/12/2026"
+    assert registro["Valor novo"] == "01/01/2027"
+
+
+def test_registrar_pagamento_conflito_edicao(planilha_vazia):
+    p = planilha_vazia
+    ana = _pessoa("Ana Souza", "ana@empresa.com.br")
+    id_ = _assinatura("Figma", [ana], plano="Mensal")
+    original = p.ler_registro(ABA_ASSINATURAS, id_)
+
+    # Outra pessoa altera o plano na planilha enquanto o diálogo estava aberto
+    linha = p.numero_da_linha(ABA_ASSINATURAS, id_)
+    p.motor().atualizar_celulas(ABA_ASSINATURAS, {f"E{linha}": "Anual"})
+
+    with pytest.raises(cadastros.ConflitoEdicao):
+        cadastros.registrar_pagamento(id_, original)
+
+
+def test_projeto_vincula_assinaturas_e_divide_custos(planilha_vazia):
+    from servicos import calculos
+
+    p = planilha_vazia
+    ana = _pessoa("Ana Souza", "ana@empresa.com.br")
+    assinatura = _assinatura("Claude", [ana], valor=100)
+    dados = {"Nome": "Portal", "Cliente": "Cliente A", "Responsável": "Ana",
+             "Departamento": "TI", "Data de início": date(2026, 1, 1),
+             "Data de término": None, "Status": "Ativo", "Observações": ""}
+    p1 = cadastros.salvar_projeto(dados, [assinatura])
+    dados["Nome"] = "Aplicativo"
+    p2 = cadastros.salvar_projeto(dados, [assinatura])
+
+    projetos = p.ler_fresco(ABA_PROJETOS)
+    usos = p.ler_fresco(ABA_USOS_PROJETO)
+    ass = calculos.preparar_assinaturas(p.ler_fresco(ABA_ASSINATURAS), date(2026, 1, 1))
+    custos = calculos.custos_por_projeto(ass, projetos, usos).set_index("ID")
+    assert custos.loc[p1, "Custo mensal"] == 50
+    assert custos.loc[p2, "Custo mensal"] == 50
+    assert calculos.projetos_por_assinatura(projetos, usos)[assinatura] == ["Aplicativo", "Portal"]
+
+    original = p.ler_registro(ABA_PROJETOS, p2)
+    cadastros.excluir_projeto(original)
+    assert len(p.ler_fresco(ABA_USOS_PROJETO)) == 1
+
+    original = p.ler_registro(ABA_PROJETOS, p1)
+    cadastros.concluir_projeto(original)
+    assert p.ler_registro(ABA_PROJETOS, p1)["Status"] == "Concluído"
+    assert p.ler_fresco(ABA_USOS_PROJETO).iloc[0]["Status"] == "Concluído"
+    projetos = p.ler_fresco(ABA_PROJETOS)
+    usos = p.ler_fresco(ABA_USOS_PROJETO)
+    custos = calculos.custos_por_projeto(ass, projetos, usos).set_index("ID")
+    assert custos.loc[p1, "Custo mensal"] == 0

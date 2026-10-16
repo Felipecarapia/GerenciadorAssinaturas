@@ -10,7 +10,9 @@ import streamlit as st
 from servicos import calculos as calc
 from servicos import planilha
 from servicos.cadastros import agora
-from servicos.esquema import ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO
+from servicos.esquema import (
+    ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_PROJETOS, ABA_USOS_PROJETO,
+)
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -26,6 +28,8 @@ class Base:
     funcionarios: pd.DataFrame
     historico: pd.DataFrame
     listas: dict
+    projetos: pd.DataFrame
+    usos_projeto: pd.DataFrame
 
     @property
     def nomes_assinaturas(self) -> list[str]:
@@ -39,7 +43,9 @@ def base() -> Base:
     ass = planilha.ler(ABA_ASSINATURAS)
     func = planilha.ler(ABA_FUNCIONARIOS)
     hist = planilha.ler(ABA_HISTORICO)
-    return Base(calc.preparar_assinaturas(ass, agora().date()), func, hist, planilha.listas())
+    projetos = planilha.ler(ABA_PROJETOS)
+    usos = planilha.ler(ABA_USOS_PROJETO)
+    return Base(calc.preparar_assinaturas(ass, agora().date()), func, hist, planilha.listas(), projetos, usos)
 
 
 def atualizar():
@@ -51,9 +57,12 @@ def atualizar():
 def cabecalho(titulo: str, subtitulo: str = "", botao_atualizar: bool = True):
     col1, col2 = st.columns([5, 1], vertical_alignment="bottom")
     with col1:
-        st.markdown(f"<div class='ga-titulo'>\n\n# {titulo}\n\n</div>", unsafe_allow_html=True)
-        if subtitulo:
-            st.markdown(f"<div class='ga-sub'>{subtitulo}</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div class='ga-page-head'><div class='ga-eyebrow'>Gestão de assinaturas</div>"
+            f"<div class='ga-titulo'><h1>{titulo}</h1></div>"
+            f"<div class='ga-sub'>{subtitulo}</div></div>",
+            unsafe_allow_html=True,
+        )
     if botao_atualizar:
         with col2:
             st.button("Atualizar", icon=":material/refresh:", on_click=atualizar,
@@ -83,6 +92,39 @@ def baixar_excel(df: pd.DataFrame, nome_arquivo: str, titulo: str, moedas=(), da
 
 def reais(v) -> str:
     return calc.formatar_reais(v)
+
+
+def limitar_itens(df: pd.DataFrame, key: str, passo: int = 5) -> pd.DataFrame:
+    """Retorna inicialmente 5 linhas e guarda a expansão desta lista na sessão."""
+    chave = f"limite_linhas_{key}"
+    limite = max(passo, int(st.session_state.get(chave, passo)))
+    st.session_state[chave] = limite
+    return df.head(limite)
+
+
+def controle_ver_mais(total: int, exibidos: int, key: str, passo: int = 5):
+    """Mostra controles compactos para expandir ou recolher uma lista."""
+    chave = f"limite_linhas_{key}"
+    if total <= passo:
+        return
+    c1, c2, _ = st.columns([1.15, 1.15, 5])
+    if exibidos < total:
+        qtd = min(passo, total - exibidos)
+        if c1.button(f"Ver mais ({qtd})", key=f"ver_mais_{key}", icon=":material/expand_more:"):
+            st.session_state[chave] = exibidos + passo
+            st.rerun()
+    if exibidos > passo:
+        if c2.button("Ver menos", key=f"ver_menos_{key}", icon=":material/expand_less:"):
+            st.session_state[chave] = passo
+            st.rerun()
+
+
+def dataframe_limitado(df: pd.DataFrame, key: str, passo: int = 5, **kwargs):
+    """Exibe um dataframe com no máximo 5 linhas inicialmente e botão Ver mais."""
+    visivel = limitar_itens(df, key, passo)
+    evento = st.dataframe(visivel, key=key, **kwargs)
+    controle_ver_mais(len(df), len(visivel), key, passo)
+    return evento, visivel
 
 
 def estado_vazio(mensagem: str, mostrar_exemplo: bool = True):

@@ -137,3 +137,49 @@ def test_evolucao_desfaz_alteracoes_do_historico():
     assert ev["08/2026"] == pytest.approx(400)        # sem Zoom (cadastrado em 09/2026)
     assert ev["07/2026"] == pytest.approx(150 + 200)  # Figma ainda 150
     assert ev["05/2026"] == pytest.approx(150 + 200 + 300)  # Slack ainda ativa
+
+
+def test_avancar_vencimento_mensal():
+    assert c.avancar_vencimento(date(2026, 10, 17), "Mensal") == date(2026, 11, 17)
+    assert c.avancar_vencimento("2026-10-17", "Mensal") == date(2026, 11, 17)
+
+
+def test_avancar_vencimento_virada_ano():
+    assert c.avancar_vencimento(date(2026, 12, 17), "Mensal") == date(2027, 1, 17)
+
+
+def test_avancar_vencimento_anual():
+    assert c.avancar_vencimento(date(2026, 10, 17), "Anual") == date(2027, 10, 17)
+
+
+def test_avancar_vencimento_ajuste_fim_de_mes():
+    # 31/01/2026 -> 28/02/2026
+    assert c.avancar_vencimento(date(2026, 1, 31), "Mensal") == date(2026, 2, 28)
+    # 31/03/2026 -> 30/04/2026
+    assert c.avancar_vencimento(date(2026, 3, 31), "Mensal") == date(2026, 4, 30)
+
+
+def test_avancar_vencimento_ano_bissexto():
+    # 29/02/2024 (bissexto) no plano anual -> 28/02/2025
+    assert c.avancar_vencimento(date(2024, 2, 29), "Anual") == date(2025, 2, 28)
+    # 31/01/2024 (ano bissexto) -> 29/02/2024
+    assert c.avancar_vencimento(date(2024, 1, 31), "Mensal") == date(2024, 2, 29)
+
+
+def test_avancar_vencimento_vitalicio_rejeitado():
+    with pytest.raises(ValueError, match="vitalício"):
+        c.avancar_vencimento(date(2026, 10, 17), "Vitalício")
+
+
+def test_avancar_vencimento_rejeita_outros_planos():
+    with pytest.raises(ValueError, match="não suporta"):
+        c.avancar_vencimento(date(2026, 10, 17), "Trimestral")
+    with pytest.raises(ValueError, match="não suporta"):
+        c.avancar_vencimento(date(2026, 10, 17), "Desconhecido")
+
+
+def test_avancar_vencimento_data_invalida():
+    with pytest.raises(ValueError):
+        c.avancar_vencimento(None, "Mensal")
+    with pytest.raises(ValueError):
+        c.avancar_vencimento("invalida", "Mensal")

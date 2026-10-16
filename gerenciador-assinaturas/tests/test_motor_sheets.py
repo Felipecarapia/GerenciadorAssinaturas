@@ -95,3 +95,35 @@ def test_fluxo_completo_no_sheets(sheets):
     cadastros.excluir_assinatura({"ID": id_})
     func = planilha.ler_fresco(ABA_FUNCIONARIOS).iloc[0]
     assert separar_lista(func["Assinaturas"]) == []
+
+
+def test_pagamento_no_sheets(sheets):
+    ana = cadastros.salvar_pessoa({"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"}, [])
+    id_ = cadastros.salvar_assinatura(
+        {"Nome": "ChatGPT", "Categoria": "Produtividade", "Plano": "Mensal", "Valor (R$)": 120.0,
+         "Vencimento": date(2026, 10, 17), "Status": "Ativa"}, [ana])
+
+    original = planilha.ler_registro(ABA_ASSINATURAS, id_)
+    novo_venc = cadastros.registrar_pagamento(id_, original)
+    assert novo_venc == date(2026, 11, 17)
+
+    ass_atual = planilha.ler_registro(ABA_ASSINATURAS, id_)
+    assert para_data(ass_atual["Vencimento"]) == date(2026, 11, 17)
+
+    hist = planilha.ler_fresco(ABA_HISTORICO)
+    ev = hist[hist["Evento"] == "Pagamento registrado"].iloc[0]
+    assert ev["Assinatura"] == "ChatGPT"
+    assert ev["Campo"] == "Vencimento"
+    assert ev["Valor anterior"] == "17/10/2026"
+    assert ev["Valor novo"] == "17/11/2026"
+
+
+def test_atualizar_campos_altera_apenas_a_celula_pedida(sheets):
+    id_ = cadastros.salvar_pessoa(
+        {"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"}, []
+    )
+    antes = planilha.ler_registro(ABA_FUNCIONARIOS, id_)
+    planilha.atualizar_campos(ABA_FUNCIONARIOS, id_, {"Cargo": "Analista"})
+    depois = planilha.ler_registro(ABA_FUNCIONARIOS, id_)
+    assert depois["Cargo"] == "Analista"
+    assert all(depois[col] == antes[col] for col in antes if col not in {"Cargo", "_linha"})

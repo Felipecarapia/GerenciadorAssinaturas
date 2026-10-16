@@ -3,8 +3,8 @@
 É a ÚNICA camada que fala com a base de dados. Existem dois "motores":
 
 * GoogleSheets: o modo real, pela conta de serviço (gspread).
-* Local: um arquivo .xlsx em dados_locais/, usado quando ainda não há
-  credenciais do Google em st.secrets. Serve para demonstrar e testar o app.
+* Local: um arquivo .xlsx habilitado somente por ``GA_FORCAR_LOCAL=1``, para
+  desenvolvimento e testes. A ausência de credenciais nunca causa fallback.
 
 As páginas nunca chamam o gspread diretamente: usam as funções públicas
 deste módulo (ler, ler_fresco, inserir, atualizar, excluir...).
@@ -92,7 +92,15 @@ class MotorGoogleSheets:
 
     def _aba(self, nome):
         if nome not in self._abas:
-            self._abas[nome] = self._planilha.worksheet(nome)
+            try:
+                self._abas[nome] = self._planilha.worksheet(nome)
+            except Exception as exc:
+                if "WorksheetNotFound" not in type(exc).__name__ or nome not in COLUNAS:
+                    raise
+                # Migração aditiva: cria novas abas do aplicativo sem alterar dados existentes.
+                ws = self._planilha.add_worksheet(title=nome, rows=1000, cols=max(10, len(COLUNAS[nome])))
+                ws.append_row(COLUNAS[nome], value_input_option=self._OPCAO)
+                self._abas[nome] = ws
         return self._abas[nome]
 
     def ler(self, aba):
@@ -158,6 +166,10 @@ class MotorLocal:
     def ler(self, aba):
         with self._trava:
             wb = self._abrir()
+            if aba not in wb.sheetnames:
+                ws = wb.create_sheet(aba)
+                ws.append(COLUNAS[aba])
+                wb.save(self.caminho)
             ws = wb[aba]
             return [["" if v is None else v for v in linha]
                     for linha in ws.iter_rows(values_only=True)]
@@ -232,9 +244,14 @@ CAMINHO_LOCAL = Path(
 def _motor_cache(caminho_local: str):
     credenciais = _segredo("gcp_service_account")
     url = _segredo("planilha", "url")
-    if credenciais and url and os.environ.get("GA_FORCAR_LOCAL") != "1":
-        return _traduz_erros(MotorGoogleSheets)(credenciais, url)
-    return MotorLocal(Path(caminho_local))
+    if os.environ.get("GA_FORCAR_LOCAL") == "1":
+        return MotorLocal(Path(caminho_local))
+    if not credenciais or not url:
+        raise ErroPlanilha(
+            "O Google Sheets não está configurado. Defina [planilha] url e "
+            "[gcp_service_account] nos Secrets."
+        )
+    return _traduz_erros(MotorGoogleSheets)(credenciais, url)
 
 
 def motor():
@@ -242,13 +259,13 @@ def motor():
 
 
 def modo_local() -> bool:
-    return isinstance(motor(), MotorLocal)
+    return os.environ.get("GA_FORCAR_LOCAL") == "1"
 
 
 # --------------------------------------------------------------------------
 # Leitura
 # --------------------------------------------------------------------------
-PREFIXO_ID = {"Assinaturas": "A", "Funcionários": "F"}
+PREFIXO_ID = {"Assinaturas": "A", "Funcionários": "F", "Projetos": "P", "Uso por projeto": "U"}
 
 
 def novo_id(aba: str = "") -> str:
@@ -371,6 +388,30 @@ def atualizar_varios(aba: str, registros: dict[str, dict]):
 
 def atualizar(aba: str, id_: str, registro: dict):
     atualizar_varios(aba, {id_: registro})
+
+
+def _letra_coluna(numero: int) -> str:
+    letras = ""
+    while numero:
+        numero, resto = divmod(numero - 1, 26)
+        letras = chr(65 + resto) + letras
+    return letras
+
+
+@_traduz_erros
+def atualizar_campos(aba: str, id_: str, campos: dict[str, object]):
+    """Atualiza somente as células informadas, relocalizando a linha pelo ID."""
+    desconhecidos = set(campos) - set(COLUNAS[aba])
+    if desconhecidos:
+        raise ErroPlanilha(f"Campo(s) desconhecido(s): {', '.join(sorted(desconhecidos))}.")
+    numero = numero_da_linha(aba, id_)
+    if numero is None:
+        raise ErroPlanilha("Esse registro não existe mais na planilha. Clique em Atualizar.")
+    celulas = {
+        f"{_letra_coluna(COLUNAS[aba].index(campo) + 1)}{numero}": _celula(valor)
+        for campo, valor in campos.items()
+    }
+    motor().atualizar_celulas(aba, celulas)
 
 
 @_traduz_erros

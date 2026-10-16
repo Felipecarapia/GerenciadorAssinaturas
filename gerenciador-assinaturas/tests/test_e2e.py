@@ -89,7 +89,8 @@ def test_percorre_telas(servidor, page):
     _print(page, "01_dashboard")
 
     for titulo, arquivo in [("Assinaturas", "02_assinaturas"), ("Pessoas", "03_pessoas"),
-                            ("Relatórios", "04_relatorios"), ("Histórico", "05_historico")]:
+                            ("Projetos", "03b_projetos"), ("Relatórios", "04_relatorios"),
+                            ("Histórico", "05_historico")]:
         page.get_by_role("link", name=titulo).first.click()
         expect(page.get_by_role("heading", name=titulo)).to_be_visible(timeout=20000)
         _print(page, arquivo)

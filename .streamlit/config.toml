@@ -1,0 +1,44 @@
+[client]
+toolbarMode = "minimal"
+showErrorDetails = "none"
+
+[server]
+runOnSave = false
+enableCORS = true
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+# ---------- Tema (comum aos dois modos) ----------
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+baseRadius = "0.75rem"
+buttonRadius = "0.6rem"
+metricValueFontSize = "1.65rem"
+chartCategoricalColors = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ec4899", "#64748b", "#ef4444"]
+
+# ---------- Tema claro ----------
+[theme.light]
+primaryColor = "#1d4ed8"
+backgroundColor = "#f7f9fc"
+secondaryBackgroundColor = "#edf2f8"
+textColor = "#10233f"
+borderColor = "#d8e1ec"
+linkColor = "#2563eb"
+
+[theme.light.sidebar]
+backgroundColor = "#f1f5f9"
+
+# ---------- Tema escuro ----------
+[theme.dark]
+primaryColor = "#3b82f6"
+backgroundColor = "#0b1424"
+secondaryBackgroundColor = "#111f35"
+textColor = "#e5edf7"
+borderColor = "#293a52"
+linkColor = "#60a5fa"
+
+[theme.dark.sidebar]
+backgroundColor = "#0d192b"

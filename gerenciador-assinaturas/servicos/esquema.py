@@ -4,6 +4,8 @@ ABA_ASSINATURAS = "Assinaturas"
 ABA_FUNCIONARIOS = "Funcionários"
 ABA_HISTORICO = "Histórico"
 ABA_LISTAS = "Listas"
+ABA_PROJETOS = "Projetos"
+ABA_USOS_PROJETO = "Uso por projeto"
 
 COLUNAS = {
     ABA_ASSINATURAS: [
@@ -19,10 +21,18 @@ COLUNAS = {
         "Valor anterior", "Valor novo",
     ],
     ABA_LISTAS: ["Categorias", "Departamentos", "Planos", "Status"],
+    ABA_PROJETOS: [
+        "ID", "Nome", "Cliente", "Responsável", "Departamento", "Data de início",
+        "Data de término", "Status", "Observações", "Cadastrado em",
+    ],
+    ABA_USOS_PROJETO: [
+        "ID", "Projeto ID", "Assinatura ID", "Finalidade", "Responsável",
+        "Data de início", "Data de término", "Status", "Observações", "Cadastrado em",
+    ],
 }
 
 # Abas que têm coluna ID (o app encontra a linha certa por ela)
-ABAS_COM_ID = (ABA_ASSINATURAS, ABA_FUNCIONARIOS)
+ABAS_COM_ID = (ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_PROJETOS, ABA_USOS_PROJETO)
 
 LISTAS_PADRAO = {
     "Categorias": [
@@ -58,10 +68,19 @@ EV_VINCULADO = "Usuário vinculado"
 EV_DESVINCULADO = "Usuário desvinculado"
 EV_EXCLUIDA = "Assinatura excluída"
 EV_RENOMEADA = "Assinatura renomeada"
+EV_PAGAMENTO = "Pagamento registrado"
+EV_PROJETO_CRIADO = "Projeto criado"
+EV_PROJETO_ALTERADO = "Projeto alterado"
+EV_PROJETO_EXCLUIDO = "Projeto excluído"
+EV_PROJETO_CONCLUIDO = "Projeto concluído"
+EV_PROJETO_VINCULADO = "Assinatura vinculada ao projeto"
+EV_PROJETO_DESVINCULADO = "Assinatura removida do projeto"
 
 EVENTOS = [
     EV_CRIADA, EV_VALOR, EV_PLANO, EV_STATUS, EV_VINCULADO,
-    EV_DESVINCULADO, EV_RENOMEADA, EV_EXCLUIDA,
+    EV_DESVINCULADO, EV_RENOMEADA, EV_EXCLUIDA, EV_PAGAMENTO,
+    EV_PROJETO_CRIADO, EV_PROJETO_ALTERADO, EV_PROJETO_EXCLUIDO, EV_PROJETO_CONCLUIDO,
+    EV_PROJETO_VINCULADO, EV_PROJETO_DESVINCULADO,
 ]
 
 # Campo da assinatura -> evento registrado quando ele muda

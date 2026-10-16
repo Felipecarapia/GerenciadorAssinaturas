@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from componentes import dialogos
-from componentes.ui import base, baixar_excel, cabecalho
+from componentes.ui import base, baixar_excel, cabecalho, controle_ver_mais, dataframe_limitado, limitar_itens
 from servicos import calculos as calc
 from servicos.cadastros import hoje
 from servicos.esquema import EVENTOS
@@ -65,7 +65,7 @@ with aba_tabela:
         "Detalhe": [dialogos.descrever(r) for _, r in f.iterrows()],
         "Campo": f["Campo"], "Valor anterior": f["Valor anterior"], "Valor novo": f["Valor novo"],
     })
-    st.dataframe(tabela, hide_index=True, width="stretch", column_config={
+    dataframe_limitado(tabela, key="historico_tabela", hide_index=True, width="stretch", column_config={
         "Data e hora": st.column_config.DatetimeColumn("Data e hora", format="DD/MM/YYYY HH:mm"),
         "Detalhe": st.column_config.TextColumn("Detalhe", width="medium"),
     })
@@ -75,6 +75,7 @@ with aba_tempo:
     if f.empty:
         st.info("Nada no período escolhido.")
     else:
-        limite = 200
-        st.caption(f"Mostrando os {min(limite, len(f))} registros mais recentes do filtro.")
-        st.html(dialogos.linha_do_tempo_html(f.head(limite), mostrar_assinatura=True))
+        visivel = limitar_itens(f, "historico_linha_tempo")
+        st.caption(f"Mostrando {len(visivel)} de {len(f)} registro(s), do mais recente para o mais antigo.")
+        st.html(dialogos.linha_do_tempo_html(visivel, mostrar_assinatura=True))
+        controle_ver_mais(len(f), len(visivel), "historico_linha_tempo")

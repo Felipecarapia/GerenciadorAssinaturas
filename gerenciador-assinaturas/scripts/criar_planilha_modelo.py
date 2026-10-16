@@ -23,7 +23,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from servicos.esquema import (  # noqa: E402
-    ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_LISTAS, COLUNAS, LISTAS_PADRAO,
+    ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_LISTAS, ABA_PROJETOS,
+    ABA_USOS_PROJETO, ABAS_COM_ID, COLUNAS, LISTAS_PADRAO,
 )
 
 
@@ -109,6 +110,7 @@ def main():
                                "fields": "userEnteredFormat.numberFormat"}}
 
     A, F, H, L = ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_LISTAS
+    P, U = ABA_PROJETOS, ABA_USOS_PROJETO
     req = [
         {"updateSpreadsheetProperties": {"properties": {"locale": "pt_BR", "timeZone": fuso},
                                          "fields": "locale,timeZone"}},
@@ -132,6 +134,12 @@ def main():
         formato(A, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
         formato(F, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
         formato(H, "Data e hora", "dd/mm/yyyy hh:mm:ss", "DATE_TIME"),
+        formato(P, "Data de início", "dd/mm/yyyy", "DATE"),
+        formato(P, "Data de término", "dd/mm/yyyy", "DATE"),
+        formato(P, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(U, "Data de início", "dd/mm/yyyy", "DATE"),
+        formato(U, "Data de término", "dd/mm/yyyy", "DATE"),
+        formato(U, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
     ]
     for nome, ws in abas.items():
         n = len(COLUNAS[nome])
@@ -161,7 +169,7 @@ def main():
             p["editors"] = {"users": [email_sa]}
         return {"addProtectedRange": {"protectedRange": p}}
 
-    for aba in (A, F):
+    for aba in ABAS_COM_ID:
         # Só aviso: um bloqueio total impediria a equipe de ordenar a aba.
         r = proteger("ID gerado pelo app", faixa(aba, "ID"), so_aviso=True)
         if r:

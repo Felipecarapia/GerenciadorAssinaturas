@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from componentes import dialogos
-from componentes.ui import base, cabecalho, estado_vazio, reais
+from componentes.ui import base, cabecalho, dataframe_limitado, estado_vazio, reais
 from servicos import calculos as calc
 from servicos import graficos
 from servicos.cadastros import agora
@@ -72,13 +72,13 @@ else:
     if mostrar.empty:
         st.success("Nada nesta faixa.", icon=":material/check:")
     else:
-        st.dataframe(
+        dataframe_limitado(
             pd.DataFrame({
                 "": mostrar["alerta"], "Assinatura": mostrar["Nome"], "Situação": mostrar["texto_alerta"],
                 "Vencimento": pd.to_datetime(mostrar["venc_data"]), "Plano": mostrar["Plano"],
                 "Valor (R$)": mostrar["valor_num"], "Status": mostrar["Status"],
             }),
-            hide_index=True, width="stretch",
+            key="dashboard_alertas", hide_index=True, width="stretch",
             column_config={
                 "": st.column_config.TextColumn("", width=40),
                 "Vencimento": st.column_config.DateColumn(format="DD/MM/YYYY"),

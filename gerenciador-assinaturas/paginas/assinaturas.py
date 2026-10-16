@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from componentes import dialogos
-from componentes.ui import base, baixar_excel, cabecalho, estado_vazio, reais
+from componentes.ui import base, baixar_excel, cabecalho, dataframe_limitado, estado_vazio, reais
 from servicos import calculos as calc
 
 dialogos.mostrar_aviso_pendente()
@@ -12,6 +12,7 @@ cabecalho("Assinaturas", "Todas as ferramentas contratadas, com valor, venciment
 b = base()
 df = b.assinaturas
 usuarios = calc.usuarios_por_assinatura(b.funcionarios)
+projetos = calc.projetos_por_assinatura(b.projetos, b.usos_projeto)
 
 if df.empty:
     estado_vazio("Nenhuma assinatura cadastrada ainda")
@@ -67,13 +68,14 @@ tabela = pd.DataFrame({
     "Status": filtrado["Status"],
     "Alerta": (filtrado["alerta"] + " " + filtrado["texto_alerta"]),
     "Usuários": filtrado["Nome"].map(lambda n: len(usuarios.get(str(n), []))),
+    "Projetos": filtrado["ID"].astype(str).map(lambda i: projetos.get(i, [])),
 }).reset_index(drop=True)
 ids = filtrado["ID"].astype(str).tolist()
 
-b1, b2, b3, b4, _ = st.columns([1.3, 1, 1, 1.2, 3])
-st.caption(f"{len(tabela)} de {len(df)} assinatura(s). Clique numa linha para editar, excluir ou ver o histórico. "
+b1, b2, b3, b4, b5, _ = st.columns([1.3, 0.9, 0.9, 1.4, 1.0, 2.5])
+st.caption(f"{len(tabela)} de {len(df)} assinatura(s). Clique numa linha para editar, excluir, marcar como pago ou ver o histórico. "
            "Clique no título de uma coluna para ordenar.")
-selecao = st.dataframe(
+selecao, tabela_visivel = dataframe_limitado(
     tabela, hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row",
     key="tabela_assinaturas", row_height=40,
     column_config={
@@ -85,11 +87,22 @@ selecao = st.dataframe(
         "Vencimento": st.column_config.DateColumn("Vencimento", format="DD/MM/YYYY"),
         "Alerta": st.column_config.TextColumn("Alerta", width="medium"),
         "Usuários": st.column_config.NumberColumn("Usuários", width="small"),
+        "Projetos": st.column_config.ListColumn("Usada nos projetos", width="large"),
     },
 )
 linhas = selecao.selection.rows if selecao else []
-sel = ids[linhas[0]] if linhas else None
-nome_sel = str(tabela.loc[linhas[0], "Nome"]) if linhas else ""
+ids_visiveis = ids[:len(tabela_visivel)]
+sel = ids_visiveis[linhas[0]] if linhas else None
+nome_sel = str(tabela_visivel.iloc[linhas[0]]["Nome"]) if linhas else ""
+plano_sel = str(tabela_visivel.iloc[linhas[0]]["Plano"]) if linhas else ""
+venc_sel = tabela_visivel.iloc[linhas[0]]["Vencimento"] if linhas else None
+
+pode_pagar = (
+    sel is not None
+    and calc.normalizar(plano_sel) in ("mensal", "anual")
+    and pd.notna(venc_sel)
+    and calc.para_data(venc_sel) is not None
+)
 
 if b1.button("Nova assinatura", type="primary", icon=":material/add:", width="stretch"):
     dialogos.abrir_assinatura()
@@ -97,11 +110,15 @@ if b2.button("Editar", icon=":material/edit:", disabled=sel is None, width="stre
     dialogos.abrir_assinatura(sel)
 if b3.button("Excluir", icon=":material/delete:", disabled=sel is None, width="stretch"):
     dialogos.confirmar_exclusao_assinatura(sel, nome_sel, len(usuarios.get(nome_sel, [])))
-if b4.button("Histórico", icon=":material/history:", disabled=sel is None, width="stretch"):
+if b4.button("Marcar como pago", icon=":material/payments:", disabled=not pode_pagar, width="stretch",
+             help="Avança o próximo vencimento e registra no Histórico"):
+    dialogos.confirmar_pagamento_assinatura(sel)
+if b5.button("Histórico", icon=":material/history:", disabled=sel is None, width="stretch"):
     dialogos.abrir_linha_do_tempo(nome_sel)
 
 exportar = tabela.drop(columns=["Logo"]).assign(
     Vencimento=tabela["Vencimento"].dt.date,
     Alerta=filtrado["texto_alerta"].values,
+    Projetos=tabela["Projetos"].map(lambda itens: ", ".join(itens)),
 )
 baixar_excel(exportar, "assinaturas", "Assinaturas", moedas=("Valor (R$)", "Mensal (R$)"), datas=("Vencimento",))

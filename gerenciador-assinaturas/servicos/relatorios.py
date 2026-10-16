@@ -342,8 +342,24 @@ FORMATO_REAIS = '"R$" #,##0.00'
 FORMATO_DATA = "DD/MM/YYYY"
 
 
+def sanitizar_nome_aba(titulo: str, existentes: set[str] | list[str] = ()) -> str:
+    """Sanitiza e deduplica o nome de uma aba para o limite de 31 caracteres do Excel.
+
+    Remove caracteres proibidos ([]:*?/\\) e garante unicidade adicionando sufixo numérico.
+    """
+    base = "".join(c for c in str(titulo or "").strip() if c not in '[]:*?/\\')[:31].strip() or "Aba"
+    nome = base
+    contador = 1
+    existentes_set = set(existentes)
+    while nome in existentes_set:
+        sufixo = f"_{contador}"
+        nome = f"{base[:31 - len(sufixo)]}{sufixo}"
+        contador += 1
+    return nome
+
+
 def _aba_excel(wb: Workbook, titulo: str, df: pd.DataFrame, moedas=(), datas=()):
-    nome = "".join(c for c in titulo if c not in '[]:*?/\\')[:31] or "Aba"
+    nome = sanitizar_nome_aba(titulo, wb.sheetnames)
     ws = wb.create_sheet(nome)
     cab_fill = PatternFill("solid", fgColor="2563EB")
     borda = Border(bottom=Side(style="thin", color="E2E8F0"))

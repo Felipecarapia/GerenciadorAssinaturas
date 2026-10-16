@@ -2,7 +2,7 @@
 import pandas as pd
 import streamlit as st
 
-from componentes.ui import base, cabecalho, estado_vazio, reais
+from componentes.ui import base, cabecalho, dataframe_limitado, estado_vazio, reais
 from servicos import calculos as calc
 from servicos import relatorios as rel
 from servicos.cadastros import agora
@@ -35,7 +35,8 @@ with abas[0]:
     c[1].metric("Gasto mensal", reais(ind["gasto_mensal"]))
     c[2].metric("Gasto anual", reais(ind["gasto_anual"]))
     c[3].metric("Colaboradores", ind["colaboradores"])
-    st.dataframe(calc.gasto_por_categoria(b.assinaturas), hide_index=True, width="stretch",
+    dataframe_limitado(calc.gasto_por_categoria(b.assinaturas), key="rel_resumo_categorias",
+                 hide_index=True, width="stretch",
                  column_config={"Gasto mensal": st.column_config.NumberColumn("Gasto mensal (R$)", format="localized")})
     st.download_button("Baixar PDF", data=lambda: rel.resumo_geral_pdf(dados),
                        file_name=f"resumo_geral_{sufixo}.pdf", mime=PDF, type="primary",
@@ -48,7 +49,7 @@ with abas[1]:
     previa = df.groupby("Categoria", as_index=False).agg(
         Assinaturas=("ID", "count"), Ativas=("Status", lambda s: int((s == "Ativa").sum())),
         **{"Gasto mensal": ("mensal", "sum")}).round(2).sort_values("Gasto mensal", ascending=False)
-    st.dataframe(previa, hide_index=True, width="stretch",
+    dataframe_limitado(previa, key="rel_por_categoria", hide_index=True, width="stretch",
                  column_config={"Gasto mensal": st.column_config.NumberColumn("Gasto mensal (R$)", format="localized")})
     st.download_button("Baixar Excel", data=lambda: rel.por_categoria_xlsx(dados),
                        file_name=f"assinaturas_por_categoria_{sufixo}.xlsx", mime=XLSX, type="primary",
@@ -63,10 +64,10 @@ with abas[2]:
     if av.empty:
         st.success("Nenhuma assinatura vence nesse período.", icon=":material/check:")
     else:
-        st.dataframe(pd.DataFrame({
+        dataframe_limitado(pd.DataFrame({
             "": av["alerta"], "Assinatura": av["Nome"], "Situação": av["texto_alerta"],
             "Vencimento": pd.to_datetime(av["venc_data"]), "Plano": av["Plano"], "Valor (R$)": av["valor_num"],
-        }), hide_index=True, width="stretch", column_config={
+        }), key=f"rel_vencimentos_{dias}", hide_index=True, width="stretch", column_config={
             "": st.column_config.TextColumn("", width=40),
             "Vencimento": st.column_config.DateColumn(format="DD/MM/YYYY"),
             "Valor (R$)": st.column_config.NumberColumn("Valor", format="localized"),
@@ -82,14 +83,16 @@ with abas[3]:
     p1, p2 = st.columns([1, 1.4])
     with p1:
         st.markdown("**Gastos por departamento**")
-        st.dataframe(calc.gasto_por_departamento(b.assinaturas, b.funcionarios), hide_index=True, width="stretch",
+        dataframe_limitado(calc.gasto_por_departamento(b.assinaturas, b.funcionarios),
+                     key="rel_gastos_departamento", hide_index=True, width="stretch",
                      column_config={
                          "Gasto mensal": st.column_config.NumberColumn("Mensal (R$)", format="localized"),
                          "Gasto anual": st.column_config.NumberColumn("Anual (R$)", format="localized")})
     with p2:
         st.markdown("**Colaboradores por assinatura**")
         cpa = calc.colaboradores_por_assinatura(b.assinaturas, b.funcionarios)
-        st.dataframe(cpa[["Assinatura", "Qtd. usuários", "Usuários", "Custo por usuário"]], hide_index=True,
+        dataframe_limitado(cpa[["Assinatura", "Qtd. usuários", "Usuários", "Custo por usuário"]],
+                     key="rel_colaboradores_assinatura", hide_index=True,
                      width="stretch", column_config={
                          "Custo por usuário": st.column_config.NumberColumn("Por usuário (R$)", format="localized")})
     d1, d2, _ = st.columns([1, 1, 3])

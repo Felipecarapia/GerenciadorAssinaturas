@@ -4,6 +4,7 @@ Módulo puro (sem Streamlit), para ser testado com pytest.
 """
 from __future__ import annotations
 
+import calendar
 import math
 import re
 from datetime import date, datetime, timedelta
@@ -136,6 +137,33 @@ def meses_do_plano(plano) -> int | None:
     if chave in MESES_POR_PLANO:
         return MESES_POR_PLANO[chave]
     return 1  # plano desconhecido: trata como mensal
+
+
+def avancar_meses(data: date, meses: int) -> date:
+    """Avança `meses` a partir de `data`, preservando o dia ou ajustando ao último dia do mês."""
+    ano = data.year + (data.month - 1 + meses) // 12
+    mes = (data.month - 1 + meses) % 12 + 1
+    ultimo_dia = calendar.monthrange(ano, mes)[1]
+    dia = min(data.day, ultimo_dia)
+    return date(ano, mes, dia)
+
+
+def avancar_vencimento(vencimento: date | str | None, plano: str) -> date:
+    """Avança o vencimento de planos mensais ou anuais.
+
+    Preserva o dia sempre que possível ou ajusta para o último dia do mês de destino.
+    Rejeita planos que não possuem renovação recorrente (ex: vitalício) ou datas inválidas.
+    """
+    d = para_data(vencimento)
+    if d is None:
+        raise ValueError("Data de vencimento inválida ou não informada.")
+    p = normalizar(plano)
+    if p in ("vitalício", "vitalicio"):
+        raise ValueError("Plano vitalício não permite pagamento recorrente.")
+    meses = {"mensal": 1, "anual": 12}.get(p)
+    if meses is None:
+        raise ValueError(f"O plano '{plano}' não suporta renovação recorrente.")
+    return avancar_meses(d, meses)
 
 
 def custo_mensal(valor, plano, status=STATUS_ATIVO) -> float:
@@ -358,6 +386,41 @@ def colaboradores_por_assinatura(df_prep: pd.DataFrame, df_func: pd.DataFrame) -
             })
     return pd.DataFrame(linhas, columns=["Assinatura", "Categoria", "Status", "Qtd. usuários",
                                          "Usuários", "Gasto mensal", "Custo por usuário"])
+
+
+def projetos_por_assinatura(projetos: pd.DataFrame, usos: pd.DataFrame) -> dict[str, list[str]]:
+    """Retorna {ID da assinatura: [nomes dos projetos ativos]} a partir dos vínculos."""
+    if projetos.empty or usos.empty:
+        return {}
+    nomes = dict(zip(projetos["ID"].astype(str), projetos["Nome"].astype(str)))
+    ativos = usos[usos["Status"].map(normalizar).isin(("ativo", "ativa"))]
+    mapa: dict[str, list[str]] = {}
+    for _, uso in ativos.iterrows():
+        nome = nomes.get(str(uso["Projeto ID"]))
+        if nome:
+            mapa.setdefault(str(uso["Assinatura ID"]), []).append(nome)
+    return {k: sorted(set(v)) for k, v in mapa.items()}
+
+
+def custos_por_projeto(assinaturas: pd.DataFrame, projetos: pd.DataFrame, usos: pd.DataFrame) -> pd.DataFrame:
+    """Divide igualmente o custo de cada assinatura entre seus projetos ativos."""
+    colunas = ["ID", "Projeto", "Cliente", "Status", "Assinaturas", "Custo mensal", "Custo anual"]
+    if projetos.empty:
+        return pd.DataFrame(columns=colunas)
+    custos = dict(zip(assinaturas["ID"].astype(str), assinaturas["mensal"])) if not assinaturas.empty else {}
+    ativos = usos[usos["Status"].map(normalizar).isin(("ativo", "ativa"))] if not usos.empty else usos
+    qtd_por_ass = ativos.groupby(ativos["Assinatura ID"].astype(str)).size().to_dict() if not ativos.empty else {}
+    linhas = []
+    for _, projeto in projetos.iterrows():
+        vinculos = ativos[ativos["Projeto ID"].astype(str) == str(projeto["ID"])] if not ativos.empty else ativos
+        ids = vinculos["Assinatura ID"].astype(str).unique().tolist() if not vinculos.empty else []
+        mensal = sum(float(custos.get(i, 0)) / max(1, qtd_por_ass.get(i, 1)) for i in ids)
+        linhas.append({
+            "ID": projeto["ID"], "Projeto": projeto["Nome"], "Cliente": projeto["Cliente"],
+            "Status": projeto["Status"], "Assinaturas": len(ids),
+            "Custo mensal": round(mensal, 2), "Custo anual": round(mensal * 12, 2),
+        })
+    return pd.DataFrame(linhas, columns=colunas)
 
 
 # --------------------------------------------------------------------------

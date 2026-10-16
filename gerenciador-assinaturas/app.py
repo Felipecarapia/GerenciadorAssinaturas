@@ -1,4 +1,4 @@
-"""Gerenciador de Assinaturas — ponto de entrada: login + menu no topo."""
+"""Gerenciador de Assinaturas — ponto de entrada e navegação lateral."""
 import streamlit as st
 
 from componentes import login
@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="Gerenciador de Assinaturas",
     page_icon=str(RAIZ / "assets" / "icone.svg"),
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 carregar_css()
 
@@ -33,10 +33,13 @@ def _rotulo_pendencias() -> str:
         return "Pendências"
 
 
-paginas = [
+paginas_gestao = [
     st.Page("paginas/dashboard.py", title="Dashboard", icon=":material/space_dashboard:", default=True),
     st.Page("paginas/assinaturas.py", title="Assinaturas", icon=":material/subscriptions:"),
     st.Page("paginas/pessoas.py", title="Pessoas", icon=":material/group:"),
+    st.Page("paginas/projetos.py", title="Projetos", icon=":material/folder_managed:"),
+]
+paginas_analise = [
     st.Page("paginas/relatorios.py", title="Relatórios", icon=":material/description:"),
     st.Page("paginas/historico.py", title="Histórico", icon=":material/history:"),
     st.Page("paginas/pendencias.py", title=_rotulo_pendencias(), icon=":material/report:",
@@ -46,12 +49,21 @@ paginas = [
 
 def _sair():
     login.sair()
-    st.switch_page(paginas[0])  # volta para o início, que mostra o login
+    st.switch_page(paginas_gestao[0])  # volta para o início, que mostra o login
 
 
-paginas.append(st.Page(_sair, title="Sair", icon=":material/logout:", url_path="sair"))
+pagina_sair = st.Page(_sair, title="Sair", icon=":material/logout:", url_path="sair")
 
-pagina = st.navigation(paginas, position="top")
+pagina = st.navigation(
+    {"Gestão": paginas_gestao, "Análise e controle": paginas_analise, "Conta": [pagina_sair]},
+    position="sidebar",
+)
+with st.sidebar:
+    st.markdown(
+        "<div class='ga-sidebar-meta'><span class='ga-sidebar-dot'></span>"
+        "Sistema conectado<br><strong>Ambiente de gestão corporativa</strong></div>",
+        unsafe_allow_html=True,
+    )
 
 try:
     pagina.run()

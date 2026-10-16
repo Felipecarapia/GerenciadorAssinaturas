@@ -22,13 +22,29 @@
   width: 66px !important;
   max-width: 66px !important;
   height: 66px !important;
-  margin: .15rem auto .45rem !important;
+  margin: .15rem 0 .45rem !important;
   padding: 0;
   object-fit: contain;
   object-position: center;
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+[data-testid="stSidebar"][data-collapsed="false"] :has(> [data-testid="stSidebarLogo"]) {
+  display: flex !important;
+  align-items: center !important;
+  gap: .7rem;
+  text-decoration: none !important;
+}
+[data-testid="stSidebar"][data-collapsed="false"] :has(> [data-testid="stSidebarLogo"])::after {
+  content: "Licenzy";
+  margin-bottom: .3rem;
+  color: #f8fafc;
+  font-size: 1.55rem;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -.025em;
+  white-space: nowrap;
 }
 [data-testid="stSidebarNav"] { padding-top: .8rem; }
 [data-testid="stSidebarNav"] span[data-testid="stIconMaterial"] { font-size: 1.25rem; }

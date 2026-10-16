@@ -17,12 +17,19 @@
   box-shadow: 8px 0 30px rgba(15, 23, 42, .04);
 }
 [data-testid="stSidebar"] > div:first-child { padding-top: 1.15rem; }
-[data-testid="stSidebar"] [data-testid="stLogo"] {
+[data-testid="stSidebar"][data-collapsed="false"] [data-testid="stSidebarLogo"] {
   box-sizing: border-box;
-  padding: .45rem .6rem;
-  border-radius: .75rem;
+  width: calc(100% - 1.3rem) !important;
+  max-width: none !important;
+  height: 138px !important;
+  margin: .25rem .65rem .8rem !important;
+  padding: .75rem 1rem;
+  object-fit: contain;
+  object-position: center;
+  border-radius: .9rem;
   background: #fff;
   border: 1px solid rgba(148, 163, 184, .22);
+  box-shadow: 0 8px 22px rgba(15, 52, 96, .10);
 }
 [data-testid="stSidebarNav"] { padding-top: .8rem; }
 [data-testid="stSidebarNav"] span[data-testid="stIconMaterial"] { font-size: 1.25rem; }

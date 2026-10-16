@@ -69,14 +69,19 @@ def _print(page, nome):
 def _entrar(page, url):
     page.goto(url)
     page.get_by_label("Senha").fill("demo")
-    page.get_by_role("button", name="Entrar").click()
+    page.get_by_role("button", name="Acessar plataforma").click()
     expect(page.get_by_role("heading", name="Dashboard")).to_be_visible(timeout=20000)
+
+
+def _sem_estouro_horizontal(page):
+    largura = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+    assert largura <= 2, f"A página excedeu a largura da tela em {largura}px"
 
 
 def test_login_recusa_senha_errada(servidor, page):
     page.goto(servidor)
     page.get_by_label("Senha").fill("errada")
-    page.get_by_role("button", name="Entrar").click()
+    page.get_by_role("button", name="Acessar plataforma").click()
     expect(page.get_by_text("Senha incorreta")).to_be_visible()
     _print(page, "00_login")
 
@@ -131,4 +136,5 @@ def test_celular(servidor, page):
     page.set_viewport_size({"width": 390, "height": 844})
     _entrar(page, servidor)
     expect(page.get_by_text("Gasto mensal").first).to_be_visible()
+    _sem_estouro_horizontal(page)
     _print(page, "08_celular")

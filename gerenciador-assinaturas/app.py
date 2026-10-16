@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="Licenzy | Gestão de Assinaturas",
     page_icon=str(RAIZ / "assets" / "icone_licenzy.png"),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 carregar_css()
 

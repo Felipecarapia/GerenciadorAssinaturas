@@ -7,7 +7,7 @@ from servicos import planilha
 
 st.set_page_config(
     page_title="Licenzy | Gestão de Assinaturas",
-    page_icon=str(RAIZ / "assets" / "icone.svg"),
+    page_icon=str(RAIZ / "assets" / "icone_licenzy.png"),
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -18,8 +18,8 @@ if not login.autenticado():
     login.tela()
     st.stop()
 
-st.logo(str(RAIZ / "assets" / "logo_licenzy.png"),
-        icon_image=str(RAIZ / "assets" / "icone.svg"), size="large")
+st.logo(str(RAIZ / "assets" / "icone_licenzy.png"),
+        icon_image=str(RAIZ / "assets" / "icone_licenzy.png"), size="large")
 
 
 def _rotulo_pendencias() -> str:

@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import base64
 import hmac
 import threading
 import time
@@ -20,7 +21,11 @@ from servicos import planilha
 MAX_TENTATIVAS = 5
 BLOQUEIO_SEGUNDOS = 5 * 60
 SENHA_DEMO = "demo"
-LOGO_LICENZY = Path(__file__).resolve().parent.parent / "assets" / "logo_licenzy.png"
+ICONE_LICENZY = Path(__file__).resolve().parent.parent / "assets" / "icone_licenzy.png"
+
+
+def _icone_licenzy_base64() -> str:
+    return base64.b64encode(ICONE_LICENZY.read_bytes()).decode("ascii")
 
 
 @st.cache_resource
@@ -83,9 +88,11 @@ def tela():
 
     _, meio, _ = st.columns([1, 1.4, 1])
     with meio:
-        with st.container(key="login_logo"):
-            st.image(str(LOGO_LICENZY), width="stretch")
         st.html(
+            f"<div class='ga-login-brand'>"
+            f"<img src='data:image/png;base64,{_icone_licenzy_base64()}' alt='Símbolo da Licenzy'>"
+            "<span>Licenzy</span>"
+            "</div>"
             "<div class='ga-login-marca'>"
             "<p class='ga-login-owner'>Uma solução do "
             "<strong>Instituto Recôncavo de Tecnologia</strong></p>"

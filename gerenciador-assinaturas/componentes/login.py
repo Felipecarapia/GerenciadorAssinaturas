@@ -86,49 +86,58 @@ def tela():
     senha_certa = _senha_configurada()
     demo = senha_certa is None and planilha.modo_local()
 
-    _, meio, _ = st.columns([1, 1.4, 1])
+    _, meio, _ = st.columns([1, 1.05, 1])
     with meio:
-        st.html(
-            f"<div class='ga-login-brand'>"
-            f"<img src='data:image/png;base64,{_icone_licenzy_base64()}' alt='Símbolo da Licenzy'>"
-            "<span>Licenzy</span>"
-            "</div>"
-            "<div class='ga-login-marca'>"
-            "<p class='ga-login-owner'>Uma solução do "
-            "<strong>Instituto Recôncavo de Tecnologia</strong></p>"
-            "<p class='ga-login-desc'>Gestão de assinaturas · Acesso corporativo restrito</p>"
-            "</div>"
-        )
-        if senha_certa is None and not demo:
-            st.error("A senha de acesso não está configurada. Defina [app] senha nos Secrets da hospedagem.")
-            st.stop()
+        with st.container(key="login_shell"):
+            st.html(
+                f"<div class='ga-login-brand'>"
+                f"<img src='data:image/png;base64,{_icone_licenzy_base64()}' "
+                "alt='Símbolo da Licenzy'>"
+                "<span>Licenzy</span>"
+                "</div>"
+                "<div class='ga-login-intro'>"
+                "<span class='ga-login-eyebrow'>Gestão corporativa de licenças</span>"
+                "<h1>Bem-vindo de volta</h1>"
+                "<p>Acesse o painel para gerenciar assinaturas, equipes e projetos.</p>"
+                "</div>"
+                "<div class='ga-login-owner'>Uma solução do "
+                "<strong>Instituto Recôncavo de Tecnologia</strong></div>"
+            )
+            if senha_certa is None and not demo:
+                st.error("A senha de acesso não está configurada. Defina [app] senha nos Secrets da hospedagem.")
+                st.stop()
 
-        ip = _ip()
-        info = _situacao(ip)
-        if info["ate"]:
-            minutos = max(1, round((info["ate"] - time.time()) / 60))
-            st.error(f"Muitas tentativas erradas. Tente de novo em cerca de {minutos} minuto(s).",
-                     icon=":material/lock_clock:")
-            st.stop()
+            ip = _ip()
+            info = _situacao(ip)
+            if info["ate"]:
+                minutos = max(1, round((info["ate"] - time.time()) / 60))
+                st.error(f"Muitas tentativas erradas. Tente de novo em cerca de {minutos} minuto(s).",
+                         icon=":material/lock_clock:")
+                st.stop()
 
-        with st.form("login", border=True):
-            senha = st.text_input("Senha", type="password", placeholder="Digite a senha de acesso")
-            entrar = st.form_submit_button("Entrar", type="primary", width="stretch",
-                                           icon=":material/login:")
-        if demo:
-            st.info(f"Modo de demonstração: a senha é **{SENHA_DEMO}**. "
-                    "Configure [app] senha nos Secrets para trocar.", icon=":material/info:")
+            with st.form("login", border=False):
+                senha = st.text_input("Senha", type="password", placeholder="Digite sua senha de acesso")
+                entrar = st.form_submit_button("Acessar plataforma", type="primary", width="stretch",
+                                               icon=":material/login:")
+            if demo:
+                st.info(f"Modo de demonstração: a senha é **{SENHA_DEMO}**. "
+                        "Configure [app] senha nos Secrets para trocar.", icon=":material/info:")
 
-        if entrar:
-            esperada = senha_certa if senha_certa is not None else SENHA_DEMO
-            if hmac.compare_digest(senha.encode("utf-8"), esperada.encode("utf-8")):
-                _zerar(ip)
-                st.session_state["autenticado"] = True
-                st.rerun()
-            else:
-                info = _registrar_erro(ip)
-                restantes = MAX_TENTATIVAS - info["erros"]
-                if restantes > 0:
-                    st.error(f"Senha incorreta. Restam {restantes} tentativa(s).")
-                else:
+            st.html(
+                "<div class='ga-login-security'><span></span>Conexão segura · "
+                "acesso restrito a usuários autorizados</div>"
+            )
+
+            if entrar:
+                esperada = senha_certa if senha_certa is not None else SENHA_DEMO
+                if hmac.compare_digest(senha.encode("utf-8"), esperada.encode("utf-8")):
+                    _zerar(ip)
+                    st.session_state["autenticado"] = True
                     st.rerun()
+                else:
+                    info = _registrar_erro(ip)
+                    restantes = MAX_TENTATIVAS - info["erros"]
+                    if restantes > 0:
+                        st.error(f"Senha incorreta. Restam {restantes} tentativa(s).")
+                    else:
+                        st.rerun()

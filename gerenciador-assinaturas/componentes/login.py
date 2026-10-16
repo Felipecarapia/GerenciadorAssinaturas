@@ -11,6 +11,7 @@ from __future__ import annotations
 import hmac
 import threading
 import time
+from pathlib import Path
 
 import streamlit as st
 
@@ -19,6 +20,7 @@ from servicos import planilha
 MAX_TENTATIVAS = 5
 BLOQUEIO_SEGUNDOS = 5 * 60
 SENHA_DEMO = "demo"
+LOGO_RECONCAVO = Path(__file__).resolve().parent.parent / "assets" / "logo_reconcavo.png"
 
 
 @st.cache_resource
@@ -81,11 +83,11 @@ def tela():
 
     _, meio, _ = st.columns([1, 1.4, 1])
     with meio:
+        with st.container(key="login_logo"):
+            st.image(str(LOGO_RECONCAVO), width="stretch")
         st.html(
-            "<div class='ga-login-marca'><div class='ga-icone'>"
-            "<span style=\"font-family:'Material Symbols Rounded';\">subscriptions</span></div>"
-            "<h2>Gerenciador de Assinaturas</h2>"
-            "<p>Acesso restrito à equipe que administra as assinaturas</p></div>"
+            "<div class='ga-login-marca'><h2>RECÔNCAVO</h2>"
+            "<p>Gerenciador de Assinaturas · Acesso corporativo restrito</p></div>"
         )
         if senha_certa is None and not demo:
             st.error("A senha de acesso não está configurada. Defina [app] senha nos Secrets da hospedagem.")

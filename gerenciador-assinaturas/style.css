@@ -17,6 +17,13 @@
   box-shadow: 8px 0 30px rgba(15, 23, 42, .04);
 }
 [data-testid="stSidebar"] > div:first-child { padding-top: 1.15rem; }
+[data-testid="stSidebar"] [data-testid="stLogo"] {
+  box-sizing: border-box;
+  padding: .45rem .6rem;
+  border-radius: .75rem;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, .22);
+}
 [data-testid="stSidebarNav"] { padding-top: .8rem; }
 [data-testid="stSidebarNav"] span[data-testid="stIconMaterial"] { font-size: 1.25rem; }
 [data-testid="stSidebarNav"] a {
@@ -163,14 +170,17 @@ button[kind="primary"], [data-testid="stFormSubmitButton"] button[kind="primary"
 .ga-tl-det { font-size: .87rem; opacity: .8; }
 
 /* Login */
-.ga-login-marca { text-align: center; margin: 4rem 0 1.25rem; }
-.ga-login-marca .ga-icone {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 66px; height: 66px; border-radius: 17px;
-  background: linear-gradient(145deg, #0b1f3a, #2563eb);
-  color: white; font-size: 31px; box-shadow: 0 14px 35px rgba(15,52,96,.28);
+.st-key-login_logo {
+  margin-top: 3rem;
+  padding: 1.1rem 1.5rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(148,163,184,.28);
+  box-shadow: 0 14px 38px rgba(15,52,96,.12);
 }
-.ga-login-marca h2 { margin: .95rem 0 0 !important; letter-spacing: -.025em; }
+.st-key-login_logo [data-testid="stImage"] { max-width: 440px; margin: 0 auto; }
+.ga-login-marca { text-align: center; margin: 1rem 0 1.25rem; }
+.ga-login-marca h2 { margin: 0 !important; letter-spacing: .06em; font-size: 1.35rem !important; }
 .ga-login-marca p { opacity: .65; }
 
 /* Estados */
@@ -183,6 +193,6 @@ hr { border-color: var(--ga-border) !important; }
 }
 @media (max-width: 640px) {
   [data-testid="stMetricValue"] { font-size: 1.45rem !important; }
-  .ga-login-marca { margin-top: 2rem; }
+  .st-key-login_logo { margin-top: 1.5rem; padding: .8rem 1rem; }
   .stButton > button { min-height: 2.75rem; }
 }

@@ -6,7 +6,7 @@ from componentes.ui import RAIZ, carregar_css
 from servicos import planilha
 
 st.set_page_config(
-    page_title="Gerenciador de Assinaturas",
+    page_title="RECÔNCAVO | Gerenciador de Assinaturas",
     page_icon=str(RAIZ / "assets" / "icone.svg"),
     layout="wide",
     initial_sidebar_state="expanded",
@@ -18,7 +18,8 @@ if not login.autenticado():
     login.tela()
     st.stop()
 
-st.logo(str(RAIZ / "assets" / "logo.svg"), icon_image=str(RAIZ / "assets" / "icone.svg"), size="large")
+st.logo(str(RAIZ / "assets" / "logo_reconcavo.png"),
+        icon_image=str(RAIZ / "assets" / "icone.svg"), size="large")
 
 
 def _rotulo_pendencias() -> str:

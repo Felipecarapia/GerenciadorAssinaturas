@@ -30,7 +30,7 @@ class Dados:
     funcionarios: pd.DataFrame
     historico: pd.DataFrame
     agora: datetime
-    empresa: str = "RECÔNCAVO"
+    empresa: str = "Licenzy · Instituto Recôncavo de Tecnologia"
 
     @property
     def hoje(self) -> date:
@@ -122,7 +122,7 @@ class PDF(FPDF):
         self.set_auto_page_break(True, margin=16)
         self.set_margins(14, 14, 14)
         self.set_title(_t(titulo))
-        self.set_author("RECÔNCAVO")
+        self.set_author("Licenzy · Instituto Recôncavo de Tecnologia")
         self.add_page()
 
     def header(self):
@@ -151,7 +151,7 @@ class PDF(FPDF):
         self.set_y(-11)
         self.set_font("Helvetica", "", 8)
         self.set_text_color(*CINZA)
-        self.cell(0, 5, _t("RECÔNCAVO · Gerenciador de Assinaturas"), align="L")
+        self.cell(0, 5, _t("Licenzy · Instituto Recôncavo de Tecnologia"), align="L")
         self.cell(0, 5, f"{self.page_no()}/{{nb}}", align="R")
 
     def secao(self, texto, espaco=40):

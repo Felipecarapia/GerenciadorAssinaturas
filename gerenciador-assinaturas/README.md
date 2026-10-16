@@ -1,4 +1,6 @@
-# Gerenciador de Assinaturas
+# Licenzy
+
+Sistema de gestão de assinaturas do Instituto Recôncavo de Tecnologia.
 
 Aplicação web em Python + Streamlit que centraliza as assinaturas de software da empresa
 sobre uma planilha do Google Sheets: quanto se gasta, quem usa cada ferramenta e o que

@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --primary: #25649a;
+  --primary-strong: #1d527f;
+  --primary-soft: #eaf3f9;
+  --secondary: #8fbbd5;
+  --dark-blue: #102c50;
+  --graphite: #373330;
+  --background: #f5f7fa;
+  --foreground: #172334;
+  --card: #ffffff;
+  --muted: #eef3f7;
+  --muted-strong: #dfe8ef;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #25649a;
+  --danger: #dc2626;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #172334;
+  --sidebar-muted: #708196;
+  --sidebar-border: #e7edf3;
+  --sidebar-hover: #edf4f8;
+  --marca-1: #8fbbd5;
+  --marca-2: #5c96bd;
+  --marca-3: #25649a;
+  --marca-4: #1d527f;
+  --marca-5: #347aac;
+  --marca-6: #a9ccdf;
+  --urgente: #dc2626;
+  --atencao: #d97706;
+  --em-dia: #0f9f6e;
+  --gradiente-marca: linear-gradient(135deg, #102c50 0%, #25649a 62%, #8fbbd5 100%);
+  --surface-card: linear-gradient(180deg, color-mix(in srgb, #ffffff 98%, var(--primary) 2%) 0%, #ffffff 100%);
+  --radius: 1rem;
+  --radius-sm: 0.65rem;
+  --shadow-card: 0 1px 2px rgb(14 26 43 / 0.04), 0 12px 32px -24px rgb(14 26 43 / 0.2);
+  --shadow-card-hover: 0 1px 2px rgb(16 44 80 / 0.06), 0 20px 42px -24px rgb(37 100 154 / 0.28);
+  --shadow-elevated: 0 1px 0 rgb(255 255 255 / 0.08) inset, 0 18px 42px rgb(7 13 25 / 0.24), 0 36px 80px rgb(7 13 25 / 0.18);
+}
+
+.dark {
+  color-scheme: dark;
+  --primary: #6ea6cb;
+  --primary-strong: #8fbbd5;
+  --primary-soft: #153552;
+  --secondary: #8fbbd5;
+  --dark-blue: #071a2f;
+  --graphite: #d9e1e8;
+  --background: #071a2f;
+  --foreground: #edf4f8;
+  --card: #0d243c;
+  --muted: #132f4b;
+  --muted-strong: #1a3b59;
+  --muted-foreground: #9fb0c1;
+  --border: #20415f;
+  --input: #31536e;
+  --ring: #8fbbd5;
+  --danger: #f05252;
+  --sidebar: #091f36;
+  --sidebar-foreground: #edf4f8;
+  --sidebar-muted: #91a6b9;
+  --sidebar-border: #183957;
+  --sidebar-hover: #12314e;
+  --marca-1: #a9ccdf;
+  --marca-2: #8fbbd5;
+  --marca-3: #6ea6cb;
+  --marca-4: #4d8db8;
+  --marca-5: #79b2d3;
+  --marca-6: #b9d7e7;
+  --urgente: #f05252;
+  --atencao: #f2a43a;
+  --em-dia: #34c48f;
+  --gradiente-marca: linear-gradient(135deg, #25649a 0%, #4d8db8 58%, #8fbbd5 100%);
+  --surface-card: linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, white 4%) 0%, var(--card) 100%);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.035) inset, 0 18px 45px -32px rgb(0 0 0 / 0.85);
+  --shadow-card-hover: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 24px 54px -30px rgb(4 19 34 / 0.95);
+  --shadow-elevated: 0 1px 0 rgb(255 255 255 / 0.08) inset, 0 22px 50px rgb(0 0 0 / 0.46), 0 40px 90px rgb(0 0 0 / 0.3);
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-danger: var(--danger);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-urgente: var(--urgente);
+  --color-atencao: var(--atencao);
+  --color-em-dia: var(--em-dia);
+  --font-display: Poppins, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: Poppins, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; overflow-x: hidden; background: var(--background); scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden; background: var(--background); font-family: var(--font-sans); font-feature-settings: "tnum" 1; text-rendering: optimizeLegibility; }
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: color-mix(in srgb, var(--primary) 16%, transparent); }
+button, a { touch-action: manipulation; }
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+h1, h2, h3 { text-wrap: balance; scroll-margin-top: 5.5rem; }
+p { text-wrap: pretty; }
+::selection { background: color-mix(in srgb, var(--primary) 25%, transparent); }
+
+.skip-link { position: fixed; top: .75rem; left: .75rem; z-index: 100; transform: translateY(-150%); border-radius: .65rem; background: var(--primary); padding: .65rem 1rem; color: white; font-weight: 700; box-shadow: 0 10px 30px rgb(0 0 0 / .2); transition: transform 150ms ease-out; }
+.skip-link:focus { transform: translateY(0); }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-in { from { opacity: 0; transform: translate(-50%, -48%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.animate-fade-in { animation: fade-in 150ms ease-out; }
+.animate-dialog-in { animation: dialog-in 150ms ease-out; }
+.recharts-cartesian-axis-tick-value { fill: var(--muted-foreground); font-size: 11px; }
+.recharts-default-tooltip { border-color: var(--border) !important; background: var(--card) !important; border-radius: 10px !important; }
+.surface-card { background: var(--surface-card); }
+.menu-action { display: flex; width: 100%; align-items: center; gap: .65rem; border-radius: .5rem; padding: .55rem .65rem; text-align: left; font-size: .8125rem; transition: background 150ms; }
+.menu-action:hover { background: var(--muted); }
+.menu-action:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; background: var(--muted); }
+.menu-action:disabled { cursor: default; opacity: .4; }
+.menu-action svg { width: 1rem; height: 1rem; }
+
+@media (pointer: fine) {
+  html { overscroll-behavior: none; }
+}
+
+@media (pointer: coarse) {
+  button, a { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

@@ -1,6 +1,10 @@
 .streamlit/secrets.toml
 *.json
 !package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
+!vercel.json
 dados_locais/
 __pycache__/
 *.pyc
@@ -8,3 +12,7 @@ __pycache__/
 .venv/
 venv/
 test-results/
+.tmp/
+web/node_modules/
+web/dist/
+web/coverage/

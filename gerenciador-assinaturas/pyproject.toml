@@ -1,0 +1,13 @@
+[project]
+name = "licenzy"
+version = "1.0.0"
+requires-python = ">=3.13,<3.15"
+
+[project.scripts]
+app = "api.main:app"
+
+[tool.vercel]
+entrypoint = "api.main:app"
+
+[tool.vercel.scripts]
+build = "python vercel_build.py"

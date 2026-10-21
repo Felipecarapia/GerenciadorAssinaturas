@@ -1,14 +1,15 @@
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowRight, Check, Eye, EyeOff, LockKeyhole, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ApiError, api } from '../lib/api'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/form'
+import { KineticGrid } from '../components/ui/kinetic-grid'
 
 function InstitutionalLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`flex aspect-[16/9] items-center ${compact ? 'w-[100px] max-w-full' : 'w-[320px] max-w-full'}`}>
+    <div className={`flex aspect-[16/9] items-center ${compact ? 'w-[50px] max-w-full' : 'w-[160px] max-w-full'}`}>
       <img src="/logo_reconcavo.png" alt="Instituto Recôncavo de Tecnologia" width="440" height="248" fetchPriority="high" className="h-full w-full object-contain" />
     </div>
   )
@@ -29,19 +30,19 @@ export function LoginPage() {
   const erro = login.error instanceof ApiError ? login.error : null
   return (
     <main className="grid min-h-screen bg-white lg:h-screen lg:grid-cols-[minmax(0,1.08fr)_minmax(460px,.92fr)] lg:overflow-hidden">
-      <section className="relative hidden min-h-screen flex-col overflow-hidden bg-white p-8 text-[#172334] lg:flex lg:h-screen lg:min-h-0 xl:p-10">
-        <div aria-hidden="true" className="pointer-events-none absolute -left-40 top-1/3 size-[520px] rounded-full border border-[#25649a]/[.08]" />
-        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-[42%] size-[380px] rounded-full border border-[#25649a]/[.06]" />
-        <InstitutionalLogo />
-        <div className="relative mt-2 max-w-[620px]">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#25649a]">Gestão corporativa de licenças</p>
-          <h2 className="max-w-[600px] text-4xl font-semibold leading-[1.12] tracking-[-0.035em] xl:text-5xl">Visibilidade para decidir. Controle para economizar.</h2>
-          <p className="mt-4 max-w-[550px] text-base leading-7 text-[#64748b] xl:text-lg">Centralize assinaturas, responsáveis e projetos em uma plataforma segura, com custos e renovações sempre visíveis.</p>
-          <ul className="mt-6 grid max-w-[570px] gap-3 text-sm text-[#172334] sm:grid-cols-3">
-            {['Custos em tempo real', 'Alertas de renovação', 'Histórico completo'].map((item) => <li key={item} className="flex items-center gap-2 rounded-xl border border-[#25649a]/10 bg-[#eaf3f9] px-3.5 py-3"><span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#25649a]/10 text-[#25649a]"><Check aria-hidden="true" className="size-3" /></span>{item}</li>)}
-          </ul>
-        </div>
-        <p className="relative mt-auto text-xs text-[#64748b]">Uma solução do Instituto Recôncavo de Tecnologia</p>
+      <section className="relative hidden min-h-screen overflow-hidden bg-white text-[#172334] lg:block lg:h-screen lg:min-h-0">
+        <KineticGrid tone="light">
+          <div className="flex h-full flex-col p-8 xl:p-10">
+            <div className="flex w-full flex-1 flex-col items-center justify-center text-center">
+              <div className="mb-10">
+                <InstitutionalLogo />
+              </div>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#25649a]">Gestão corporativa de licenças</p>
+              <h2 className="max-w-[680px] text-4xl font-semibold leading-[1.12] tracking-[-0.035em] xl:text-5xl">Visibilidade para decidir. Controle para economizar.</h2>
+            </div>
+            <p className="mt-auto text-xs text-[#64748b]">Uma solução do Instituto Recôncavo de Tecnologia</p>
+          </div>
+        </KineticGrid>
       </section>
       <section className="relative flex min-h-screen items-center justify-center bg-[#102c50] px-5 pb-8 pt-48 text-white lg:h-screen lg:min-h-0 lg:rounded-l-[2rem] lg:px-10 lg:py-8 xl:rounded-l-[3rem]">
         <div className="absolute inset-x-0 top-0 flex h-44 items-center bg-white px-5 lg:hidden"><InstitutionalLogo compact /></div>

@@ -65,10 +65,10 @@ def sheets(monkeypatch):
 
 
 def test_fluxo_completo_no_sheets(sheets):
-    ana = cadastros.salvar_pessoa({"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"}, [])
+    ana = cadastros.salvar_pessoa({"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"})
     id_ = cadastros.salvar_assinatura(
         {"Nome": "Figma", "Categoria": "Design", "Plano": "Mensal", "Valor (R$)": 150.0,
-         "Vencimento": date(2026, 11, 1), "Status": "Ativa"}, [ana])
+         "Vencimento": date(2026, 11, 1), "Status": "Ativa"})
 
     ass = sheets.abas[ABA_ASSINATURAS].linhas[1]
     assert ass[COLUNAS[ABA_ASSINATURAS].index("Vencimento")] == 46327  # número de série
@@ -81,7 +81,7 @@ def test_fluxo_completo_no_sheets(sheets):
     assert para_data(original["Vencimento"]) == date(2026, 11, 1)
     cadastros.salvar_assinatura(
         {"Nome": "Figma", "Categoria": "Design", "Plano": "Mensal", "Valor (R$)": 175.5,
-         "Vencimento": date(2026, 12, 1), "Status": "Ativa"}, [ana], original)
+         "Vencimento": date(2026, 12, 1), "Status": "Ativa"}, original=original)
     figma = [l for l in sheets.abas[ABA_ASSINATURAS].linhas if l[1] == "Figma"][0]
     assert figma[5] == 175.5
     assert isinstance(figma[8], (int, float))  # Cadastrado em continua data
@@ -98,10 +98,10 @@ def test_fluxo_completo_no_sheets(sheets):
 
 
 def test_pagamento_no_sheets(sheets):
-    ana = cadastros.salvar_pessoa({"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"}, [])
+    ana = cadastros.salvar_pessoa({"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"})
     id_ = cadastros.salvar_assinatura(
         {"Nome": "ChatGPT", "Categoria": "Produtividade", "Plano": "Mensal", "Valor (R$)": 120.0,
-         "Vencimento": date(2026, 10, 17), "Status": "Ativa"}, [ana])
+         "Vencimento": date(2026, 10, 17), "Status": "Ativa"})
 
     original = planilha.ler_registro(ABA_ASSINATURAS, id_)
     novo_venc = cadastros.registrar_pagamento(id_, original)
@@ -120,7 +120,7 @@ def test_pagamento_no_sheets(sheets):
 
 def test_atualizar_campos_altera_apenas_a_celula_pedida(sheets):
     id_ = cadastros.salvar_pessoa(
-        {"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"}, []
+        {"Nome completo": "Ana", "E-mail": "ana@x.com.br", "Departamento": "TI"}
     )
     antes = planilha.ler_registro(ABA_FUNCIONARIOS, id_)
     planilha.atualizar_campos(ABA_FUNCIONARIOS, id_, {"Cargo": "Analista"})

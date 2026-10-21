@@ -1,6 +1,10 @@
+import { toast } from 'sonner'
+
 export class ApiError extends Error {
   status: number
   fieldErrors: Record<string, string>
+  tentativasRestantes?: number
+  tenteEmSegundos?: number
 
   constructor(status: number, detail: any) {
     const message = typeof detail === 'string'
@@ -10,6 +14,8 @@ export class ApiError extends Error {
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = detail?.erros || {}
+    this.tentativasRestantes = typeof detail?.tentativas_restantes === 'number' ? detail.tentativas_restantes : undefined
+    this.tenteEmSegundos = typeof detail?.tente_em_segundos === 'number' ? detail.tente_em_segundos : undefined
   }
 }
 
@@ -27,6 +33,9 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   if (!response.ok) {
     const payload: any = await errorPayload(response)
+    if (response.status === 403) {
+      toast.error(payload?.detail || 'Seu perfil não permite esta ação.')
+    }
     throw new ApiError(response.status, payload?.detail ?? payload)
   }
   if (response.status === 204) return undefined as T

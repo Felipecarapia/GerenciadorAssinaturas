@@ -11,8 +11,9 @@ from datetime import datetime, timedelta
 from servicos import planilha
 from servicos.calculos import formatar_reais, juntar_lista
 from servicos.esquema import (
-    ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, EV_CRIADA, EV_PLANO, EV_STATUS,
-    EV_VALOR, EV_VINCULADO,
+    ABA_ASSINATURAS, ABA_EQUIPE, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_PROJETOS,
+    EQ_APROVADO, EQ_PROPOSTO, EV_CRIADA, EV_PLANO, EV_STATUS, EV_VALOR,
+    PROJ_ATIVO, PROJ_PENDENTE, PROJ_RECUSADO,
 )
 
 
@@ -123,12 +124,9 @@ def carregar(agora: datetime, com_pendencias: bool = False) -> None:
         cad = agora - timedelta(days=rnd.randint(30, 400))
         reg_func.append({
             "ID": planilha.novo_id(ABA_FUNCIONARIOS), "Nome completo": nome, "E-mail": _email(nome),
-            "Departamento": dep, "Cargo": cargo, "Assinaturas": juntar_lista(assin),
+            "Departamento": dep, "Cargo": cargo, "Assinaturas": "",
             "Cadastrado em": cad.strftime("%Y-%m-%d %H:%M:%S"),
         })
-        for a in assin:
-            quando = max(cad, cadastro.get(a, cad)) + timedelta(hours=rnd.randint(1, 48))
-            hist.append(_hist(min(quando, agora), a, EV_VINCULADO, "Usuários", "", nome, "app"))
 
     if com_pendencias:
         reg_func.append({
@@ -147,7 +145,51 @@ def carregar(agora: datetime, com_pendencias: bool = False) -> None:
     planilha.inserir(ABA_ASSINATURAS, reg_ass)
     planilha.inserir(ABA_FUNCIONARIOS, reg_func)
     planilha.inserir(ABA_HISTORICO, hist)
+    _criar_projetos_exemplo(reg_ass, reg_func, agora)
+    from servicos.projetos import sincronizar_derivados
+    sincronizar_derivados()
     planilha.limpar_cache()
+
+
+def _criar_projetos_exemplo(assinaturas: list[dict], pessoas: list[dict], momento: datetime) -> None:
+    ass_por_nome = {a["Nome"]: a["ID"] for a in assinaturas}
+    configuracoes = [
+        ("Plataforma educacional", "IRT", PROJ_ATIVO, range(0, 5)),
+        ("Operação corporativa", "Interno", PROJ_ATIVO, range(5, 10)),
+        ("Marketing 360", "Institucional", PROJ_ATIVO, range(10, 15)),
+        ("Portal do cliente", "Cliente piloto", PROJ_PENDENTE, (0, 1, 5)),
+        ("Laboratório de dados", "Pesquisa", PROJ_RECUSADO, (2, 3)),
+    ]
+    projetos, equipe = [], []
+    texto = momento.strftime("%Y-%m-%d %H:%M:%S")
+    for nome, cliente, status, indices in configuracoes:
+        projeto_id = planilha.novo_id(ABA_PROJETOS)
+        projetos.append({
+            "ID": projeto_id, "Nome": nome, "Cliente": cliente, "Responsável": "Equipe Licenzy",
+            "Departamento": "TI", "Data de início": momento.date().isoformat(), "Data de término": "",
+            "Status": status, "Observações": "Dados de demonstração", "Cadastrado em": texto,
+            "Motivo da recusa": "Revisar o escopo e o custo previsto." if status == PROJ_RECUSADO else "",
+            "Solicitado por": "suporte@reconcavo.org.br", "Solicitado em": texto,
+            "Aprovado por": "financeiro@reconcavo.org.br" if status == PROJ_ATIVO else "",
+            "Aprovado em": texto if status == PROJ_ATIVO else "",
+            "Recusado por": "financeiro@reconcavo.org.br" if status == PROJ_RECUSADO else "",
+            "Recusado em": texto if status == PROJ_RECUSADO else "",
+        })
+        situacao = EQ_APROVADO if status == PROJ_ATIVO else EQ_PROPOSTO
+        for indice in indices:
+            pessoa = pessoas[indice]
+            nomes = PESSOAS[indice][3][:2]
+            for assinatura_nome in nomes:
+                assinatura_id = ass_por_nome.get(assinatura_nome)
+                if assinatura_id:
+                    equipe.append({
+                        "ID": planilha.novo_id(ABA_EQUIPE), "Projeto ID": projeto_id,
+                        "Pessoa ID": pessoa["ID"], "Assinatura ID": assinatura_id,
+                        "Situação": situacao, "Proposto por": "dados de exemplo",
+                        "Proposto em": texto, "Cadastrado em": texto,
+                    })
+    planilha.inserir(ABA_PROJETOS, projetos)
+    planilha.inserir(ABA_EQUIPE, equipe)
 
 
 def _hist(quando, assinatura, evento, campo, anterior, novo, origem):

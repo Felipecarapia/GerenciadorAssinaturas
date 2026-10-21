@@ -3,15 +3,15 @@ import streamlit as st
 
 from componentes import dialogos
 from componentes.ui import base, cabecalho
-from servicos import cadastros, pendencias, planilha
-from servicos.esquema import ABA_ASSINATURAS
+from servicos import pendencias, planilha, projetos
+from servicos.esquema import ABA_ASSINATURAS, ABA_EQUIPE
 
 dialogos.mostrar_aviso_pendente()
 cabecalho("Pendências", "Problemas nos dados da planilha que precisam de correção")
 
 b = base()
 bruto = planilha.ler(ABA_ASSINATURAS)  # sem conversões, para ver o que está digitado
-lista = pendencias.listar(bruto, b.funcionarios, b.listas)
+lista = pendencias.listar(bruto, b.funcionarios, b.listas, b.projetos, planilha.ler(ABA_EQUIPE))
 
 if lista.empty:
     st.success("Nenhuma pendência. Os dados da planilha estão consistentes.", icon=":material/verified:")
@@ -33,7 +33,6 @@ tipo = st.segmented_control("Tipo", tipos, default="Todos", key="pend_tipo", lab
 if tipo and tipo != "Todos":
     lista = lista[lista["Tipo"] == tipo]
 
-nomes_validos = set(b.nomes_assinaturas)
 for i, p in lista.reset_index(drop=True).iterrows():
     with st.container(border=True):
         c1, c2 = st.columns([4, 1.4], vertical_alignment="center")
@@ -41,11 +40,11 @@ for i, p in lista.reset_index(drop=True).iterrows():
             st.markdown(f"**{p['Tipo']}** · {p['Item']}")
             st.caption(f":material/table_rows: Aba **{p['Aba']}**, linha **{p['Linha']}** — {p['Descrição']}")
         with c2:
-            if p["Tipo"] == pendencias.T_INEXISTENTE:
-                if st.button("Remover escolhas inválidas", key=f"pend_rm_{i}", icon=":material/link_off:",
+            if p["Tipo"] in (pendencias.T_INEXISTENTE, pendencias.T_VINCULO_EDITADO):
+                if st.button("Recalcular", key=f"pend_rm_{i}", icon=":material/sync:",
                              width="stretch"):
-                    removidas = cadastros.remover_escolhas_invalidas(p["ID"], nomes_validos)
-                    dialogos.avisar_depois(f"Removido de {p['Item']}: {', '.join(removidas) or 'nada'}")
+                    alteradas = projetos.sincronizar_derivados()
+                    dialogos.avisar_depois(f"Assinaturas recalculadas a partir das equipes: {alteradas['pessoas']} pessoa(s).")
                     st.rerun()
             if st.button("Corrigir no app", key=f"pend_fix_{i}", icon=":material/build:", width="stretch",
                          type="primary"):

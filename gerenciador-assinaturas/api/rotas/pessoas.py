@@ -19,9 +19,18 @@ def _itens():
     custos = calc.custo_por_pessoa(dados.assinaturas, dados.funcionarios)
     if custos.empty:
         return dados, []
-    tabela = custos.merge(dados.funcionarios[["ID", "Assinaturas"]], on="ID", how="left")
+    tabela = custos.merge(dados.funcionarios[["ID", "Assinaturas", "Cadastrado em"]], on="ID", how="left")
     tabela["assinaturas_lista"] = tabela["Assinaturas"].map(calc.separar_lista)
-    return dados, df_json(tabela.sort_values("Nome completo"))
+    itens = df_json(tabela.sort_values("Nome completo"))
+    projetos = {str(p["ID"]): str(p["Nome"]) for p in df_json(dados.projetos)}
+    por_pessoa = {}
+    valendo = calc.equipe_valendo(dados.projetos, dados.equipe)
+    if not valendo.empty:
+        for pessoa_id, grupo in valendo.groupby(valendo["Pessoa ID"].astype(str)):
+            por_pessoa[pessoa_id] = sorted({projetos.get(str(pid), str(pid)) for pid in grupo["Projeto ID"]})
+    for item in itens:
+        item["projetos_lista"] = por_pessoa.get(str(item["ID"]), [])
+    return dados, itens
 
 
 @router.get("")
@@ -39,12 +48,21 @@ def obter(id_: str):
         raise HTTPException(404, "Pessoa nao encontrada.")
     dados = base()
     detalhe = calc.detalhe_pessoa(dados.assinaturas, dados.funcionarios, id_)
-    return {"item": valor_json(registro), "detalhe": df_json(detalhe), "assinaturas": calc.separar_lista(registro.get("Assinaturas"))}
+    projetos, em_aprovacao = calc.projetos_da_pessoa(
+        dados.assinaturas, dados.funcionarios, dados.projetos, dados.equipe, id_,
+    )
+    custo = sum(float(item.get("Parte da pessoa") or 0) for item in df_json(detalhe))
+    return {
+        "item": valor_json(registro), "detalhe": df_json(detalhe),
+        "assinaturas": calc.separar_lista(registro.get("Assinaturas")),
+        "projetos": projetos, "em_aprovacao": em_aprovacao,
+        "custo_mensal": round(custo, 2),
+    }
 
 
 @router.post("", status_code=201)
 def criar(corpo: PessoaIn):
-    id_ = cadastros.salvar_pessoa(corpo.dados.model_dump(by_alias=True), corpo.assinaturas)
+    id_ = cadastros.salvar_pessoa(corpo.dados.model_dump(by_alias=True))
     return {"id": id_}
 
 
@@ -53,7 +71,7 @@ def editar(id_: str, corpo: PessoaIn):
     original = corpo.original or planilha.ler_registro(ABA_FUNCIONARIOS, id_)
     if original is None:
         raise HTTPException(404, "Pessoa nao encontrada.")
-    id_salvo = cadastros.salvar_pessoa(corpo.dados.model_dump(by_alias=True), corpo.assinaturas, original)
+    id_salvo = cadastros.salvar_pessoa(corpo.dados.model_dump(by_alias=True), original=original)
     return {"id": id_salvo}
 
 

@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { BarChart3, BellRing, ClipboardClock, FileText, FolderKanban, LayoutDashboard, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCcw, Sun, TriangleAlert, Users, X } from 'lucide-react'
+import { BarChart3, BellRing, ChevronsLeft, ClipboardClock, FileText, FolderKanban, LayoutDashboard, LogOut, Menu, Moon, RefreshCcw, Sun, TriangleAlert, Users, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
+import { useSessao } from '../lib/sessao'
 import { cn } from '../lib/utils'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 
 const navegacao = [
@@ -54,7 +56,8 @@ export function AppShell() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const resumo = useQuery({ queryKey: ['sistema'], queryFn: () => api<{ pendencias: number; modo_local: boolean }>('/api/sistema/resumo'), refetchInterval: 60_000 })
+  const resumo = useQuery({ queryKey: ['sistema'], queryFn: () => api<{ pendencias: number; projetos_pendentes: number; modo_local: boolean }>('/api/sistema/resumo'), refetchInterval: 60_000 })
+  const sessao = useSessao()
   const atualizar = useMutation({
     mutationFn: () => api<{ mensagem: string }>('/api/sistema/atualizar', { method: 'POST' }),
     onSuccess: async (data) => { await queryClient.invalidateQueries(); toast.success(data.mensagem) },
@@ -69,13 +72,20 @@ export function AppShell() {
   const itemBase = 'flex h-10 items-center gap-3 rounded-[var(--radius-sm)] text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
   const renderSidebar = (compacto: boolean, id?: string) => (
     <aside id={id} aria-label="Navegação principal" className={cn('flex h-full flex-col overflow-hidden whitespace-nowrap border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out', compacto ? 'w-[72px]' : 'w-64')}>
-      <div className={cn('flex h-[88px] shrink-0 items-center gap-2 border-b border-sidebar-border', compacto ? 'justify-center px-0' : 'px-4')}>
-        <div className="flex min-w-0 items-center" role="img" aria-label="Instituto Recôncavo de Tecnologia">
-          <span className={cn('flex shrink-0 items-center justify-center overflow-hidden', compacto ? 'h-12 w-16 px-0.5' : 'h-16 w-44')}>
-            <img src={dark ? '/Logo Recôncavo em Branco.png' : '/logo_reconcavo.png'} alt="" width="140" height="40" className="h-full w-full object-contain" />
-          </span>
-        </div>
-        <button className="ml-auto rounded-lg p-2 hover:bg-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:hidden" onClick={() => setMobile(false)} aria-label="Fechar menu"><X aria-hidden="true" className="size-5" /></button>
+      <div className={cn('flex h-[72px] shrink-0 items-center border-b border-sidebar-border', compacto ? 'justify-center px-0' : 'gap-2 px-3')}>
+        {compacto ? (
+          <button className="hidden size-10 place-items-center rounded-[var(--radius-sm)] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:grid" onClick={() => setRecolhido(false)} aria-label="Expandir menu" aria-controls="menu-lateral" aria-expanded="false" title="Expandir menu (Ctrl+B)"><Menu aria-hidden="true" className="size-5" /></button>
+        ) : (
+          <>
+            <div className="flex min-w-0 flex-1 items-center" role="img" aria-label="Instituto Recôncavo de Tecnologia">
+              <span className="flex h-12 w-36 shrink-0 items-center justify-center overflow-hidden">
+                <img src={dark ? '/Logo Recôncavo em Branco.png' : '/logo_reconcavo.png'} alt="" width="140" height="40" className="h-full w-full object-contain" />
+              </span>
+            </div>
+            <button className="hidden size-10 shrink-0 place-items-center rounded-[var(--radius-sm)] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:grid" onClick={() => setRecolhido(true)} aria-label="Recolher menu" aria-controls="menu-lateral" aria-expanded="true" title="Recolher menu (Ctrl+B)"><ChevronsLeft aria-hidden="true" className="size-5" /></button>
+            <button className="ml-auto rounded-lg p-2 hover:bg-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:hidden" onClick={() => setMobile(false)} aria-label="Fechar menu"><X aria-hidden="true" className="size-5" /></button>
+          </>
+        )}
       </div>
       <nav aria-label="Seções" className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         {[...new Set(navegacao.map((item) => item.grupo))].map((grupo, indice) => (
@@ -86,13 +96,14 @@ export function AppShell() {
             <div className="space-y-0.5">
               {navegacao.filter((item) => item.grupo === grupo).map(({ label, href, icon: Icon }) => {
                 const ativo = href === '/' ? pathname === '/' : pathname.startsWith(href)
-                const temBadge = label === 'Pendências' && !!pendencias
-                return <Link key={href} to={href} title={compacto ? (temBadge ? `${label} (${pendencias})` : label) : undefined} aria-current={ativo ? 'page' : undefined} onClick={() => setMobile(false)} className={cn(itemBase, 'relative font-medium', compacto ? 'justify-center px-0' : 'px-3', ativo ? 'bg-primary text-white shadow-[0_6px_20px_-8px_var(--primary)]' : 'text-sidebar-foreground/70 hover:bg-sidebar-hover hover:text-sidebar-foreground')}>
+                const badge = label === 'Pendências' ? pendencias : label === 'Projetos' && sessao.data?.usuario.perfil === 'financeiro' ? (resumo.data?.projetos_pendentes ?? 0) : 0
+                const temBadge = badge > 0
+                return <Link key={href} to={href} title={compacto ? (temBadge ? `${label} (${badge})` : label) : undefined} aria-current={ativo ? 'page' : undefined} onClick={() => setMobile(false)} className={cn(itemBase, 'relative font-medium', compacto ? 'justify-center px-0' : 'px-3', ativo ? 'bg-primary text-white shadow-[0_6px_20px_-8px_var(--primary)]' : 'text-sidebar-foreground/70 hover:bg-sidebar-hover hover:text-sidebar-foreground')}>
                   <Icon aria-hidden="true" className="size-[18px] shrink-0" />
                   <span className={cn(compacto && 'sr-only')}>{label}</span>
                   {temBadge && (compacto
-                    ? <span aria-label={`${pendencias} pendências`} className={cn('absolute right-3 top-2 size-2 rounded-full ring-2', ativo ? 'bg-white ring-primary' : 'bg-urgente ring-sidebar')} />
-                    : <span aria-label={`${pendencias} pendências`} className={cn('ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold', ativo ? 'bg-white/20 text-white' : 'bg-urgente/15 text-urgente')}>{pendencias}</span>)}
+                    ? <span aria-label={`${badge} itens`} className={cn('absolute right-3 top-2 size-2 rounded-full ring-2', ativo ? 'bg-white ring-primary' : 'bg-urgente ring-sidebar')} />
+                    : <span aria-label={`${badge} itens`} className={cn('ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold', ativo ? 'bg-white/20 text-white' : 'bg-urgente/15 text-urgente')}>{badge}</span>)}
                 </Link>
               })}
             </div>
@@ -100,6 +111,7 @@ export function AppShell() {
         ))}
       </nav>
       <div className="space-y-3 p-3">
+        {!compacto && sessao.data?.usuario && <div className="whitespace-normal border-b border-sidebar-border px-3 pb-3"><p className="truncate text-sm font-semibold">{sessao.data.usuario.nome}</p><p className="mt-0.5 truncate text-xs text-sidebar-muted">{sessao.data.usuario.email}</p><Badge tone={sessao.data.usuario.perfil === 'financeiro' ? 'green' : 'blue'} className="mt-2">{sessao.data.usuario.perfil === 'financeiro' ? 'Financeiro' : 'Suporte'}</Badge></div>}
         {pendencias > 0 && !compacto && (
           <div className="whitespace-normal rounded-[var(--radius)] border border-sidebar-border bg-sidebar-hover p-4">
             <span className="grid size-9 place-items-center rounded-xl text-white" style={{ background: 'var(--gradiente-marca)' }}><TriangleAlert aria-hidden="true" className="size-[18px]" /></span>
@@ -135,8 +147,7 @@ export function AppShell() {
       <div className={cn('transition-[padding] duration-200 ease-out', recolhido ? 'lg:pl-[72px]' : 'lg:pl-64')}>
         <header className="sticky top-0 z-30 flex h-[72px] items-center border-b border-border bg-background/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobile(true)} aria-label="Abrir menu" aria-expanded={mobile}><Menu aria-hidden="true" className="size-5" /></Button>
-          <Button variant="ghost" size="icon" className="-ml-2 hidden lg:inline-flex" onClick={() => setRecolhido(!recolhido)} aria-label={recolhido ? 'Expandir menu' : 'Recolher menu'} aria-controls="menu-lateral" aria-expanded={!recolhido} title={`${recolhido ? 'Expandir' : 'Recolher'} menu (Ctrl+B)`}>{recolhido ? <PanelLeftOpen aria-hidden="true" className="size-5" /> : <PanelLeftClose aria-hidden="true" className="size-5" />}</Button>
-          <div className="ml-3 hidden min-w-0 sm:block">
+          <div className="ml-3 hidden min-w-0 sm:block lg:ml-0">
             <p className="truncate text-xs font-medium text-muted-foreground">Gestão de licenças e assinaturas</p>
           </div>
           <div className="ml-auto flex items-center gap-3">

@@ -20,8 +20,7 @@ c1.metric("Projetos", len(b.projetos))
 c2.metric("Projetos ativos", int((b.projetos["Status"].astype(str) == "Ativo").sum()) if not b.projetos.empty else 0)
 c3.metric("Custo mensal alocado", reais(float(custos["Custo mensal"].sum()) if not custos.empty else 0))
 
-if st.button("Novo projeto", type="primary", icon=":material/add:"):
-    dialogos.abrir_projeto()
+st.info("A gestão e a aprovação de projetos estão disponíveis na interface React. Esta tela antiga é somente para consulta.")
 
 if b.projetos.empty:
     estado_vazio("Nenhum projeto cadastrado", mostrar_exemplo=False)
@@ -48,16 +47,6 @@ selecao, visivel = dataframe_limitado(
     })
 linhas = selecao.selection.rows if selecao else []
 selecionado = dados.iloc[linhas[0]] if linhas and linhas[0] < len(visivel) else None
-
-a1, a2, a3, _ = st.columns([1, 1.35, 1, 3.65])
-if a1.button("Editar", icon=":material/edit:", disabled=selecionado is None, width="stretch"):
-    dialogos.abrir_projeto(str(selecionado["ID"]))
-ja_concluido = selecionado is not None and calc.normalizar(selecionado["Status"]) == "concluído"
-if a2.button("Concluir", icon=":material/task_alt:", disabled=selecionado is None or ja_concluido,
-             width="stretch", help="Retira o projeto da divisão de custos ativos"):
-    dialogos.confirmar_conclusao_projeto(selecionado.to_dict())
-if a3.button("Excluir", icon=":material/delete:", disabled=selecionado is None, width="stretch"):
-    dialogos.confirmar_exclusao_projeto(selecionado.to_dict())
 
 if selecionado is not None:
     pid = str(selecionado["ID"])

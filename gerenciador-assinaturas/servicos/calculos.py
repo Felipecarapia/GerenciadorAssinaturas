@@ -423,6 +423,73 @@ def custos_por_projeto(assinaturas: pd.DataFrame, projetos: pd.DataFrame, usos: 
     return pd.DataFrame(linhas, columns=colunas)
 
 
+def equipe_valendo(projetos: pd.DataFrame, equipe: pd.DataFrame) -> pd.DataFrame:
+    """Linhas aprovadas que ainda concedem acesso, com os dados do projeto."""
+    from servicos.esquema import EQ_VALENDO, PROJ_CONCLUIDO
+
+    if projetos.empty or equipe.empty:
+        return pd.DataFrame(columns=list(equipe.columns) + ["Projeto", "Cliente", "Status do projeto"])
+    informacoes = projetos[["ID", "Nome", "Cliente", "Status"]].rename(columns={
+        "ID": "Projeto ID", "Nome": "Projeto", "Status": "Status do projeto",
+    })
+    combinado = equipe.merge(informacoes, on="Projeto ID", how="left")
+    return combinado[
+        combinado["Situação"].isin(EQ_VALENDO)
+        & (combinado["Status do projeto"].map(normalizar) != normalizar(PROJ_CONCLUIDO))
+    ].copy()
+
+
+def projetos_da_pessoa(
+    assinaturas: pd.DataFrame, funcionarios: pd.DataFrame, projetos: pd.DataFrame,
+    equipe: pd.DataFrame, pessoa_id: str,
+) -> tuple[list[dict], list[dict]]:
+    """Projetos efetivos e alterações ainda em aprovação de uma pessoa."""
+    from servicos.esquema import EQ_PROPOSTO, EQ_REMOCAO, PROJ_CONCLUIDO
+
+    if equipe.empty or projetos.empty:
+        return [], []
+    assinaturas_por_id = {str(a["ID"]): a.to_dict() for _, a in assinaturas.iterrows()}
+    projetos_por_id = {str(p["ID"]): p.to_dict() for _, p in projetos.iterrows()}
+    usuarios = usuarios_por_assinatura(funcionarios)
+    da_pessoa = equipe[equipe["Pessoa ID"].astype(str) == str(pessoa_id)]
+
+    def tecnologia(linha) -> dict:
+        assinatura = assinaturas_por_id.get(str(linha["Assinatura ID"]), {})
+        nome = str(assinatura.get("Nome", linha["Assinatura ID"]))
+        quantidade = len(usuarios.get(nome, [])) or 1
+        mensal = float(assinatura.get("mensal") or 0)
+        return {
+            "id": str(linha["Assinatura ID"]), "nome": nome,
+            "plano": assinatura.get("Plano", ""), "status": assinatura.get("Status", ""),
+            "situacao": linha.get("Situação", ""),
+            "parte_da_pessoa": round(mensal / quantidade, 2),
+        }
+
+    ativos: dict[str, dict] = {}
+    aprovacao: dict[str, dict] = {}
+    for _, linha in da_pessoa.iterrows():
+        projeto_id = str(linha["Projeto ID"])
+        projeto = projetos_por_id.get(projeto_id)
+        if not projeto or normalizar(projeto.get("Status")) == normalizar(PROJ_CONCLUIDO):
+            continue
+        situacao = normalizar(linha.get("Situação"))
+        destino = aprovacao if situacao in {normalizar(EQ_PROPOSTO), normalizar(EQ_REMOCAO)} else ativos
+        item = destino.setdefault(projeto_id, {
+            "projeto_id": projeto_id, "projeto": projeto.get("Nome", projeto_id),
+            "cliente": projeto.get("Cliente", ""), "status": projeto.get("Status", ""),
+            "assinaturas": [],
+        })
+        item["assinaturas"].append(tecnologia(linha))
+        if situacao == normalizar(EQ_REMOCAO):
+            efetivo = ativos.setdefault(projeto_id, {
+                "projeto_id": projeto_id, "projeto": projeto.get("Nome", projeto_id),
+                "cliente": projeto.get("Cliente", ""), "status": projeto.get("Status", ""),
+                "assinaturas": [],
+            })
+            efetivo["assinaturas"].append(tecnologia(linha))
+    return list(ativos.values()), list(aprovacao.values())
+
+
 # --------------------------------------------------------------------------
 # Evolução do gasto em 12 meses (RF-07), reconstruída pelo Histórico
 # --------------------------------------------------------------------------

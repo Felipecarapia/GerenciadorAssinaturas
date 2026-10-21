@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api", tags=["sistema"], dependencies=[Depends(exigir
 def _total_pendencias() -> int:
     dados = base()
     bruto = planilha.ler(ABA_ASSINATURAS)
-    return len(pendencias.listar(bruto, dados.funcionarios, dados.listas))
+    return len(pendencias.listar(bruto, dados.funcionarios, dados.listas, dados.projetos, dados.equipe))
 
 
 @router.get("/base")
@@ -28,7 +28,9 @@ def listas():
 
 @router.get("/sistema/resumo")
 def resumo():
-    return {"pendencias": _total_pendencias(), "modo_local": planilha.modo_local()}
+    dados = base()
+    pendentes = sum(1 for status in dados.projetos.get("Status", []) if str(status).casefold() == "pendente")
+    return {"pendencias": _total_pendencias(), "projetos_pendentes": pendentes, "modo_local": planilha.modo_local()}
 
 
 @router.post("/sistema/atualizar")

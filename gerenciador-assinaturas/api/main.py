@@ -10,10 +10,31 @@ from fastapi.responses import JSONResponse
 
 from api import auth
 from api.rotas import assinaturas, dashboard, historico, pendencias, pessoas, projetos, relatorios, sistema
-from servicos.cadastros import ConflitoEdicao, ErroValidacao
+from servicos.cadastros import ConflitoEdicao, ErroValidacao, TransicaoInvalida
 from servicos.planilha import ErroPlanilha
+from servicos.usuarios import usuario_atual
+
+
+class UsuarioContextoMiddleware:
+    """Propaga a identidade assinada até o Histórico sem consultar a planilha."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        requisicao = Request(scope)
+        usuario = auth.usuario_do_cookie(requisicao.cookies.get(auth.COOKIE))
+        token = usuario_atual.set(usuario)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            usuario_atual.reset(token)
 
 app = FastAPI(title="Licenzy API", version="1.0.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+app.add_middleware(UsuarioContextoMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -30,6 +51,11 @@ async def erro_validacao(_: Request, exc: ErroValidacao):
 
 @app.exception_handler(ConflitoEdicao)
 async def conflito(_: Request, exc: ConflitoEdicao):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(TransicaoInvalida)
+async def transicao_invalida(_: Request, exc: TransicaoInvalida):
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 

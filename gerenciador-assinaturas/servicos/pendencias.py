@@ -8,7 +8,7 @@ import pandas as pd
 from servicos.calculos import (
     email_valido, meses_do_plano, normalizar, para_data, para_numero, separar_lista, vazio,
 )
-from servicos.esquema import ABA_ASSINATURAS, ABA_FUNCIONARIOS
+from servicos.esquema import ABA_ASSINATURAS, ABA_EQUIPE, ABA_FUNCIONARIOS, PROJ_ATIVO, PROJ_CONCLUIDO
 
 # tipos de pendência
 T_INEXISTENTE = "Assinatura escolhida não existe"
@@ -20,6 +20,9 @@ T_EMAIL_INV = "E-mail inválido"
 T_NOME_DUP = "Nome de assinatura duplicado"
 T_VIRGULA = "Nome com vírgula"
 T_FORA_LISTA = "Opção fora da lista"
+T_SEM_PROJETO = "Assinatura sem projeto ativo"
+T_VINCULO_EDITADO = "Vínculo editado na planilha"
+T_EQUIPE_INEXISTENTE = "Equipe com registro inexistente"
 
 
 def _p(aba, linha, id_, tipo, descricao, item):
@@ -27,7 +30,10 @@ def _p(aba, linha, id_, tipo, descricao, item):
             "Descrição": descricao, "Item": item}
 
 
-def listar(df_ass: pd.DataFrame, df_func: pd.DataFrame, listas: dict[str, list[str]]) -> pd.DataFrame:
+def listar(
+    df_ass: pd.DataFrame, df_func: pd.DataFrame, listas: dict[str, list[str]],
+    projetos: pd.DataFrame | None = None, equipe: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     p = []
     nomes_validos = set()
     if not df_ass.empty:
@@ -83,5 +89,50 @@ def listar(df_ass: pd.DataFrame, df_func: pd.DataFrame, listas: dict[str, list[s
             if invalidas:
                 p.append(_p(*args, T_INEXISTENTE,
                             "Escolha(s) que não existem mais: " + ", ".join(invalidas), item))
+
+    com_equipe = projetos is not None and equipe is not None
+    projetos = pd.DataFrame() if projetos is None else projetos
+    equipe = pd.DataFrame() if equipe is None else equipe
+    if not equipe.empty:
+        ids_pessoas = set(df_func["ID"].astype(str)) if not df_func.empty else set()
+        ids_assinaturas = set(df_ass["ID"].astype(str)) if not df_ass.empty else set()
+        ids_projetos = set(projetos["ID"].astype(str)) if not projetos.empty else set()
+        for _, linha in equipe.iterrows():
+            ausentes = []
+            if str(linha["Pessoa ID"]) not in ids_pessoas:
+                ausentes.append("pessoa")
+            if str(linha["Assinatura ID"]) not in ids_assinaturas:
+                ausentes.append("assinatura")
+            if str(linha["Projeto ID"]) not in ids_projetos:
+                ausentes.append("projeto")
+            if ausentes:
+                p.append(_p(ABA_EQUIPE, linha["_linha"], linha["ID"], T_EQUIPE_INEXISTENTE,
+                            "Referência inexistente: " + ", ".join(ausentes), str(linha["ID"])))
+
+    if com_equipe:
+        status_projetos = dict(zip(projetos["ID"].astype(str), projetos["Status"].map(normalizar))) if not projetos.empty else {}
+        nomes_assinaturas = dict(zip(df_ass["ID"].astype(str), df_ass["Nome"].astype(str))) if not df_ass.empty else {}
+        calculado: dict[str, set[str]] = {}
+        assinaturas_em_projeto_ativo: set[str] = set()
+        for _, linha in equipe.iterrows():
+            projeto_status = status_projetos.get(str(linha["Projeto ID"]), "")
+            if projeto_status == normalizar(PROJ_CONCLUIDO) or str(linha.get("Situação")) not in ("Aprovado", "Remoção proposta"):
+                continue
+            assinatura_id = str(linha["Assinatura ID"])
+            nome = nomes_assinaturas.get(assinatura_id)
+            if nome:
+                calculado.setdefault(str(linha["Pessoa ID"]), set()).add(nome)
+                if projeto_status == normalizar(PROJ_ATIVO):
+                    assinaturas_em_projeto_ativo.add(assinatura_id)
+        for _, pessoa in (df_func.iterrows() if not df_func.empty else []):
+            atual = set(separar_lista(pessoa.get("Assinaturas")))
+            esperado = calculado.get(str(pessoa["ID"]), set())
+            if atual != esperado:
+                p.append(_p(ABA_FUNCIONARIOS, pessoa["_linha"], pessoa["ID"], T_VINCULO_EDITADO,
+                            "A coluna Assinaturas diverge da equipe aprovada. Use Recalcular.", pessoa["Nome completo"]))
+        for _, assinatura in (df_ass.iterrows() if not df_ass.empty else []):
+            if normalizar(assinatura.get("Status")) == "ativa" and str(assinatura["ID"]) not in assinaturas_em_projeto_ativo:
+                p.append(_p(ABA_ASSINATURAS, assinatura["_linha"], assinatura["ID"], T_SEM_PROJETO,
+                            "A assinatura ativa não está em nenhum projeto ativo.", assinatura["Nome"]))
 
     return pd.DataFrame(p, columns=["Aba", "Linha", "ID", "Tipo", "Descrição", "Item"])

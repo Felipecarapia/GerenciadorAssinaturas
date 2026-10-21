@@ -9,18 +9,20 @@ import streamlit as st
 
 from servicos import planilha
 from servicos.calculos import (
-    avancar_vencimento, email_valido, formatar_data, formatar_reais, juntar_lista, normalizar, para_data, para_numero, separar_lista, vazio,
+    avancar_vencimento, email_valido, formatar_data, formatar_reais, normalizar, para_data, para_datahora, para_numero, vazio,
 )
 from servicos.esquema import (
-    ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_PROJETOS, ABA_USOS_PROJETO,
-    COLUNAS, EV_CRIADA, EV_DESVINCULADO, EV_EXCLUIDA, EV_PAGAMENTO, EV_VINCULADO,
-    EV_PROJETO_ALTERADO, EV_PROJETO_CONCLUIDO, EV_PROJETO_CRIADO, EV_PROJETO_DESVINCULADO,
-    EV_PROJETO_EXCLUIDO, EV_PROJETO_VINCULADO, EVENTO_POR_CAMPO,
+    ABA_EQUIPE, ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_PROJETOS,
+    COLUNAS, EV_CRIADA, EV_EXCLUIDA, EV_PAGAMENTO, EVENTO_POR_CAMPO,
 )
 
 
 class ConflitoEdicao(Exception):
     """Alguém alterou o mesmo registro na planilha enquanto a janela estava aberta."""
+
+
+class TransicaoInvalida(Exception):
+    """A mudança solicitada não é permitida no estado atual do projeto."""
 
 
 class ErroValidacao(Exception):
@@ -49,6 +51,11 @@ def hoje() -> date:
 
 def quem() -> str:
     """No Community Cloud, o e-mail do convidado; senão, 'app'."""
+    from servicos.usuarios import usuario_atual
+
+    usuario = usuario_atual.get()
+    if usuario is not None and usuario.email:
+        return usuario.email
     try:
         email = st.user.get("email") if hasattr(st.user, "get") else getattr(st.user, "email", None)
         if email and "@" in str(email) and "example.com" not in str(email):
@@ -58,16 +65,19 @@ def quem() -> str:
     return "app"
 
 
-def _norm(v) -> str:
+def _norm(v, campo: str = "") -> str:
     if vazio(v):
         return ""
     if isinstance(v, bool):
         return str(v)
+    if campo in {"Cadastrado em", "Solicitado em", "Aprovado em", "Recusado em", "Proposto em", "Último acesso"}:
+        datahora = para_datahora(v)
+        return datahora.strftime("%Y-%m-%d %H:%M:%S") if datahora else str(v).strip()
+    if campo in {"Vencimento", "Data de início", "Data de término"}:
+        data = para_data(v)
+        return data.isoformat() if data else str(v).strip()
     if isinstance(v, (int, float)):
         return f"{float(v):.4f}"
-    d = para_data(v) if not isinstance(v, str) else None
-    if d:
-        return d.isoformat()
     return str(v).strip()
 
 
@@ -80,7 +90,7 @@ def _verificar_conflito(aba: str, original: dict) -> dict:
     atual = planilha.ler_registro(aba, original["ID"])
     if atual is None:
         raise ConflitoEdicao("Esse registro foi excluído da planilha enquanto você editava.")
-    diferentes = [c for c in COLUNAS[aba] if _norm(atual.get(c)) != _norm(original.get(c))]
+    diferentes = [c for c in COLUNAS[aba] if _norm(atual.get(c), c) != _norm(original.get(c), c)]
     if diferentes:
         raise ConflitoEdicao(
             "Alguém alterou este registro na planilha enquanto você editava "
@@ -113,7 +123,7 @@ def registrar(eventos: list[dict]):
 # --------------------------------------------------------------------------
 # Assinaturas
 # --------------------------------------------------------------------------
-def validar_assinatura(dados: dict, usuarios: list[str], df_ass, id_atual=None) -> dict[str, str]:
+def validar_assinatura(dados: dict, df_ass, id_atual=None) -> dict[str, str]:
     """RF-13: obrigatórios, valor positivo, nome sem vírgula e único."""
     erros = {}
     nome = str(dados.get("Nome", "")).strip()
@@ -138,19 +148,17 @@ def validar_assinatura(dados: dict, usuarios: list[str], df_ass, id_atual=None) 
     logo = str(dados.get("Logo (URL)", "") or "").strip()
     if logo and not logo.startswith(("http://", "https://")):
         erros["Logo (URL)"] = "O logo precisa ser um link começando com https://"
-    if not usuarios:
-        erros["Usuários"] = "Escolha pelo menos 1 usuário."
     return erros
 
 
-def salvar_assinatura(dados: dict, usuarios_ids: list[str], original: dict | None = None) -> str:
-    """Cria ou edita uma assinatura e sincroniza a coluna Assinaturas dos funcionários.
+def salvar_assinatura(dados: dict, original: dict | None = None) -> str:
+    """Cria ou edita uma assinatura e recalcula as colunas derivadas da equipe.
 
     `original` é a linha como estava quando a janela foi aberta (None = nova).
     Retorna o ID salvo.
     """
     df_ass = planilha.ler_fresco(ABA_ASSINATURAS)
-    erros = validar_assinatura(dados, usuarios_ids, df_ass, original["ID"] if original else None)
+    erros = validar_assinatura(dados, df_ass, original["ID"] if original else None)
     if erros:
         raise ErroValidacao(erros)
 
@@ -172,7 +180,6 @@ def salvar_assinatura(dados: dict, usuarios_ids: list[str], original: dict | Non
         eventos.append(_evento(registro["Nome"], EV_CRIADA, "", "",
                                f"{registro['Plano']} · {formatar_reais(registro['Valor (R$)'])} · {registro['Status']}",
                                momento))
-        nome_antigo = None
     else:
         atual = _verificar_conflito(ABA_ASSINATURAS, original)
         id_ = str(original["ID"])
@@ -182,42 +189,15 @@ def salvar_assinatura(dados: dict, usuarios_ids: list[str], original: dict | Non
             from servicos.calculos import para_datahora
             registro["Cadastrado em"] = para_datahora(registro["Cadastrado em"]).strftime("%Y-%m-%d %H:%M:%S")
         planilha.atualizar(ABA_ASSINATURAS, id_, registro)
-        nome_antigo = str(atual["Nome"])
         for campo, evento in EVENTO_POR_CAMPO.items():
             antes, depois = _texto_hist(campo, atual.get(campo)), _texto_hist(campo, registro[campo])
             if normalizar(antes) != normalizar(depois):
                 eventos.append(_evento(registro["Nome"], evento, campo, antes, depois, momento))
 
-    eventos += _sincronizar_usuarios(registro["Nome"], nome_antigo, usuarios_ids, momento)
     registrar(eventos)
-    planilha.limpar_cache()
+    from servicos.projetos import sincronizar_derivados
+    sincronizar_derivados()
     return id_
-
-
-def _sincronizar_usuarios(nome: str, nome_antigo: str | None, usuarios_ids: list[str], momento) -> list[dict]:
-    """RF-14 e vínculos: atualiza a coluna Assinaturas de cada funcionário."""
-    df_func = planilha.ler_fresco(ABA_FUNCIONARIOS)
-    desejados = {str(i) for i in usuarios_ids}
-    alterar, eventos = {}, []
-    for _, f in df_func.iterrows():
-        id_f = str(f["ID"])
-        lista = separar_lista(f["Assinaturas"])
-        nova = list(lista)
-        if nome_antigo and nome_antigo != nome:
-            nova = [nome if n == nome_antigo else n for n in nova]
-        tem = nome in nova
-        if id_f in desejados and not tem:
-            nova.append(nome)
-            eventos.append(_evento(nome, EV_VINCULADO, "Usuários", "", f["Nome completo"], momento))
-        elif id_f not in desejados and tem:
-            nova = [n for n in nova if n != nome]
-            eventos.append(_evento(nome, EV_DESVINCULADO, "Usuários", f["Nome completo"], "", momento))
-        if nova != lista:
-            reg = _sem_internos(f.to_dict(), ABA_FUNCIONARIOS)
-            reg["Assinaturas"] = juntar_lista(nova)
-            alterar[id_f] = _limpar_datas(reg)
-    planilha.atualizar_varios(ABA_FUNCIONARIOS, alterar)
-    return eventos
 
 
 def _limpar_datas(reg: dict) -> dict:
@@ -238,19 +218,21 @@ def excluir_assinatura(original: dict):
         return
     nome = str(atual["Nome"])
     momento = agora()
-    eventos = _sincronizar_usuarios(nome, None, [], momento)
-    usos = planilha.ler_fresco(ABA_USOS_PROJETO)
-    vinculados = usos[usos["Assinatura ID"].astype(str) == str(original["ID"])] if not usos.empty else usos
+    equipe = planilha.ler_fresco(ABA_EQUIPE)
     projetos = planilha.ler_fresco(ABA_PROJETOS)
     nomes_projetos = dict(zip(projetos["ID"].astype(str), projetos["Nome"].astype(str))) if not projetos.empty else {}
-    for _, uso in vinculados.iterrows():
-        planilha.excluir(ABA_USOS_PROJETO, str(uso["ID"]))
-        eventos.append(_evento(nome, EV_PROJETO_DESVINCULADO, "Projeto",
-                               nomes_projetos.get(str(uso["Projeto ID"]), str(uso["Projeto ID"])), "", momento))
+    status_projetos = dict(zip(projetos["ID"].astype(str), projetos["Status"].map(normalizar))) if not projetos.empty else {}
+    vinculadas = equipe[equipe["Assinatura ID"].astype(str) == str(original["ID"])] if not equipe.empty else equipe
+    abertos = sorted({nomes_projetos.get(str(l["Projeto ID"]), str(l["Projeto ID"])) for _, l in vinculadas.iterrows()
+                      if status_projetos.get(str(l["Projeto ID"])) != "concluído"})
+    if abertos:
+        raise ErroValidacao({"Assinatura": "Remova a assinatura dos projetos antes de excluí-la: " + ", ".join(abertos)})
+    for _, linha in vinculadas.iterrows():
+        planilha.excluir(ABA_EQUIPE, str(linha["ID"]))
     planilha.excluir(ABA_ASSINATURAS, original["ID"])
-    eventos.append(_evento(nome, EV_EXCLUIDA, "", nome, "", momento))
-    registrar(eventos)
-    planilha.limpar_cache()
+    registrar([_evento(nome, EV_EXCLUIDA, "", nome, "", momento)])
+    from servicos.projetos import sincronizar_derivados
+    sincronizar_derivados(permitir_equipe_vazia=not equipe.empty)
 
 
 def registrar_pagamento(id_assinatura: str, original: dict | None = None) -> date:
@@ -316,7 +298,7 @@ def validar_pessoa(dados: dict, df_func, id_atual=None) -> dict[str, str]:
     return erros
 
 
-def salvar_pessoa(dados: dict, assinaturas: list[str], original: dict | None = None) -> str:
+def salvar_pessoa(dados: dict, original: dict | None = None) -> str:
     df_func = planilha.ler_fresco(ABA_FUNCIONARIOS)
     erros = validar_pessoa(dados, df_func, original["ID"] if original else None)
     if erros:
@@ -327,26 +309,19 @@ def salvar_pessoa(dados: dict, assinaturas: list[str], original: dict | None = N
         "E-mail": str(dados["E-mail"]).strip().lower(),
         "Departamento": dados["Departamento"],
         "Cargo": str(dados.get("Cargo") or "").strip(),
-        "Assinaturas": juntar_lista(assinaturas),
+        "Assinaturas": "",
     }
     if original is None:
         id_ = planilha.novo_id(ABA_FUNCIONARIOS)
         registro |= {"ID": id_, "Cadastrado em": momento.strftime("%Y-%m-%d %H:%M:%S")}
         planilha.inserir(ABA_FUNCIONARIOS, [registro])
-        antes = []
     else:
         atual = _verificar_conflito(ABA_FUNCIONARIOS, original)
         id_ = str(original["ID"])
-        registro |= {"ID": id_, "Cadastrado em": atual.get("Cadastrado em", "")}
+        registro |= {"ID": id_, "Cadastrado em": atual.get("Cadastrado em", ""),
+                     "Assinaturas": atual.get("Assinaturas", "")}
         registro = _limpar_datas(registro)
         planilha.atualizar(ABA_FUNCIONARIOS, id_, registro)
-        antes = separar_lista(atual.get("Assinaturas"))
-    depois = separar_lista(registro["Assinaturas"])
-    eventos = [_evento(a, EV_VINCULADO, "Usuários", "", registro["Nome completo"], momento)
-               for a in depois if a not in antes]
-    eventos += [_evento(a, EV_DESVINCULADO, "Usuários", registro["Nome completo"], "", momento)
-                for a in antes if a not in depois]
-    registrar(eventos)
     planilha.limpar_cache()
     return id_
 
@@ -356,120 +331,16 @@ def excluir_pessoa(original: dict):
     if atual is None:
         planilha.limpar_cache()
         return
-    momento = agora()
-    eventos = [_evento(a, EV_DESVINCULADO, "Usuários", atual["Nome completo"], "", momento)
-               for a in separar_lista(atual.get("Assinaturas"))]
-    planilha.excluir(ABA_FUNCIONARIOS, original["ID"])
-    registrar(eventos)
-    planilha.limpar_cache()
-
-
-def remover_escolhas_invalidas(id_func: str, nomes_validos: set[str]) -> list[str]:
-    """Pendências: tira da pessoa as assinaturas que não existem mais."""
-    atual = planilha.ler_registro(ABA_FUNCIONARIOS, id_func)
-    if atual is None:
-        return []
-    lista = separar_lista(atual.get("Assinaturas"))
-    invalidas = [n for n in lista if n not in nomes_validos]
-    if invalidas:
-        reg = _limpar_datas(_sem_internos(atual, ABA_FUNCIONARIOS))
-        reg["Assinaturas"] = juntar_lista([n for n in lista if n in nomes_validos])
-        planilha.atualizar(ABA_FUNCIONARIOS, id_func, reg)
-        planilha.limpar_cache()
-    return invalidas
-
-
-# --------------------------------------------------------------------------
-# Projetos e uso de assinaturas
-# --------------------------------------------------------------------------
-def validar_projeto(dados: dict, assinaturas_ids: list[str], df_projetos, id_atual=None) -> dict[str, str]:
-    erros = {}
-    nome = str(dados.get("Nome", "")).strip()
-    if not nome:
-        erros["Nome"] = "Informe o nome do projeto."
-    else:
-        outros = df_projetos if id_atual is None else df_projetos[df_projetos["ID"].astype(str) != str(id_atual)]
-        if not outros.empty and normalizar(nome) in set(outros["Nome"].map(normalizar)):
-            erros["Nome"] = "Já existe um projeto com esse nome."
-    if vazio(dados.get("Status")):
-        erros["Status"] = "Escolha o status."
-    if not assinaturas_ids:
-        erros["Assinaturas"] = "Vincule pelo menos uma assinatura."
-    return erros
-
-
-def salvar_projeto(dados: dict, assinaturas_ids: list[str], original: dict | None = None) -> str:
+    equipe = planilha.ler_fresco(ABA_EQUIPE)
     projetos = planilha.ler_fresco(ABA_PROJETOS)
-    erros = validar_projeto(dados, assinaturas_ids, projetos, original["ID"] if original else None)
-    if erros:
-        raise ErroValidacao(erros)
-    momento = agora()
-    registro = {
-        "Nome": " ".join(str(dados["Nome"]).split()), "Cliente": str(dados.get("Cliente") or "").strip(),
-        "Responsável": str(dados.get("Responsável") or "").strip(),
-        "Departamento": str(dados.get("Departamento") or "").strip(),
-        # Mantidos vazios na planilha para compatibilidade com a estrutura existente.
-        "Data de início": "", "Data de término": "",
-        "Status": dados["Status"], "Observações": str(dados.get("Observações") or "").strip(),
-    }
-    if original is None:
-        id_ = planilha.novo_id(ABA_PROJETOS)
-        registro |= {"ID": id_, "Cadastrado em": momento.strftime("%Y-%m-%d %H:%M:%S")}
-        planilha.inserir(ABA_PROJETOS, [registro])
-        eventos = [_evento(registro["Nome"], EV_PROJETO_CRIADO, "Projeto", "", registro["Nome"], momento)]
-    else:
-        atual = _verificar_conflito(ABA_PROJETOS, original)
-        id_ = str(atual["ID"])
-        registro |= {"ID": id_, "Cadastrado em": atual.get("Cadastrado em", "")}
-        planilha.atualizar(ABA_PROJETOS, id_, _limpar_datas(registro))
-        eventos = [_evento(registro["Nome"], EV_PROJETO_ALTERADO, "Projeto", atual.get("Nome", ""), registro["Nome"], momento)]
-
-    usos = planilha.ler_fresco(ABA_USOS_PROJETO)
-    atuais = usos[usos["Projeto ID"].astype(str) == id_] if not usos.empty else usos
-    por_ass = {str(r["Assinatura ID"]): r.to_dict() for _, r in atuais.iterrows()}
-    desejados = set(map(str, assinaturas_ids))
-    nomes_ass = dict(zip(planilha.ler_fresco(ABA_ASSINATURAS)["ID"].astype(str),
-                         planilha.ler_fresco(ABA_ASSINATURAS)["Nome"].astype(str)))
-    novos = []
-    for ass_id in desejados - set(por_ass):
-        novos.append({
-            "ID": planilha.novo_id(ABA_USOS_PROJETO), "Projeto ID": id_, "Assinatura ID": ass_id,
-            "Finalidade": "", "Responsável": registro["Responsável"],
-            "Data de início": "", "Data de término": "", "Status": "Ativo",
-            "Observações": "", "Cadastrado em": momento.strftime("%Y-%m-%d %H:%M:%S"),
-        })
-        eventos.append(_evento(nomes_ass.get(ass_id, ass_id), EV_PROJETO_VINCULADO, "Projeto", "", registro["Nome"], momento))
-    if novos:
-        planilha.inserir(ABA_USOS_PROJETO, novos)
-    for ass_id in set(por_ass) - desejados:
-        planilha.excluir(ABA_USOS_PROJETO, str(por_ass[ass_id]["ID"]))
-        eventos.append(_evento(nomes_ass.get(ass_id, ass_id), EV_PROJETO_DESVINCULADO, "Projeto", registro["Nome"], "", momento))
-    registrar(eventos)
-    planilha.limpar_cache()
-    return id_
-
-
-def excluir_projeto(original: dict):
-    atual = _verificar_conflito(ABA_PROJETOS, original)
-    usos = planilha.ler_fresco(ABA_USOS_PROJETO)
-    vinculados = usos[usos["Projeto ID"].astype(str) == str(atual["ID"])] if not usos.empty else usos
-    for _, uso in vinculados.iterrows():
-        planilha.excluir(ABA_USOS_PROJETO, str(uso["ID"]))
-    planilha.excluir(ABA_PROJETOS, str(atual["ID"]))
-    registrar([_evento(atual["Nome"], EV_PROJETO_EXCLUIDO, "Projeto", atual["Nome"], "")])
-    planilha.limpar_cache()
-
-
-def concluir_projeto(original: dict):
-    """Conclui o projeto e encerra seus vínculos para retirá-lo dos custos ativos."""
-    atual = _verificar_conflito(ABA_PROJETOS, original)
-    if normalizar(atual.get("Status")) == "concluído":
-        return
-    planilha.atualizar_campos(ABA_PROJETOS, str(atual["ID"]), {"Status": "Concluído"})
-    usos = planilha.ler_fresco(ABA_USOS_PROJETO)
-    vinculados = usos[usos["Projeto ID"].astype(str) == str(atual["ID"])] if not usos.empty else usos
-    for _, uso in vinculados.iterrows():
-        planilha.atualizar_campos(ABA_USOS_PROJETO, str(uso["ID"]), {"Status": "Concluído"})
-    registrar([_evento(atual["Nome"], EV_PROJETO_CONCLUIDO, "Status",
-                       atual.get("Status", ""), "Concluído")])
+    nomes = dict(zip(projetos["ID"].astype(str), projetos["Nome"].astype(str))) if not projetos.empty else {}
+    status = dict(zip(projetos["ID"].astype(str), projetos["Status"].map(normalizar))) if not projetos.empty else {}
+    vinculadas = equipe[equipe["Pessoa ID"].astype(str) == str(original["ID"])] if not equipe.empty else equipe
+    abertos = sorted({nomes.get(str(l["Projeto ID"]), str(l["Projeto ID"])) for _, l in vinculadas.iterrows()
+                      if status.get(str(l["Projeto ID"])) != "concluído"})
+    if abertos:
+        raise ErroValidacao({"Pessoa": "Conclua ou remova a pessoa destes projetos antes de excluí-la: " + ", ".join(abertos)})
+    for _, linha in vinculadas.iterrows():
+        planilha.excluir(ABA_EQUIPE, str(linha["ID"]))
+    planilha.excluir(ABA_FUNCIONARIOS, original["ID"])
     planilha.limpar_cache()

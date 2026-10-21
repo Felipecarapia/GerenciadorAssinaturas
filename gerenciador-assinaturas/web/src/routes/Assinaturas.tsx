@@ -40,7 +40,7 @@ function RowActions({ item, onEdit, onDelete, onPay, onHistory }: { item: Assina
   }
   useEffect(() => {
     if (!open) return
-    const focusTimer = window.requestAnimationFrame(() => menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus())
+    const focusTimer = window.requestAnimationFrame(() => menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true }))
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setOpen(false)
@@ -54,13 +54,11 @@ function RowActions({ item, onEdit, onDelete, onPay, onHistory }: { item: Assina
     window.addEventListener('keydown', closeOnEscape)
     document.addEventListener('pointerdown', closeOnOutsideClick)
     window.addEventListener('resize', closeOnViewportChange)
-    window.addEventListener('scroll', closeOnViewportChange, true)
     return () => {
       window.cancelAnimationFrame(focusTimer)
       window.removeEventListener('keydown', closeOnEscape)
       document.removeEventListener('pointerdown', closeOnOutsideClick)
       window.removeEventListener('resize', closeOnViewportChange)
-      window.removeEventListener('scroll', closeOnViewportChange, true)
     }
   }, [open])
   const handleMenuKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -106,7 +104,7 @@ export function AssinaturasPage() {
   const invalidate = async () => { await client.invalidateQueries({ queryKey: ['assinaturas'] }); await client.invalidateQueries({ queryKey: ['dashboard'] }); await client.invalidateQueries({ queryKey: ['sistema'] }) }
   const salvar = useMutation({ mutationFn: (values: AssinaturaValores) => {
     const item = form === 'nova' ? null : form
-    const payload = { dados: { Nome: values.nome, 'Logo (URL)': values.logo, Categoria: values.categoria, Plano: values.plano, 'Valor (R$)': values.valor, Vencimento: values.vencimento || null, Status: values.status }, usuarios_ids: values.usuarios, original: item }
+    const payload = { dados: { Nome: values.nome, 'Logo (URL)': values.logo, Categoria: values.categoria, Plano: values.plano, 'Valor (R$)': values.valor, Vencimento: values.vencimento || null, Status: values.status }, original: item }
     return api(item ? `/api/assinaturas/${item.ID}` : '/api/assinaturas', { method: item ? 'PUT' : 'POST', body: JSON.stringify(payload) })
   }, onSuccess: async () => { setForm(null); await invalidate(); toast.success('Assinatura salva.') } })
   const remover = useMutation({ mutationFn: (item: Assinatura) => api(`/api/assinaturas/${item.ID}`, { method: 'DELETE', body: JSON.stringify({ original: item }) }), onSuccess: async () => { setExcluir(null); await invalidate(); toast.success('Assinatura excluída.') }, onError: (error: Error) => toast.error(error.message) })
@@ -136,7 +134,7 @@ export function AssinaturasPage() {
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><KpiCard label="Cadastradas" value={d.itens.length}/><KpiCard label="Ativas" value={d.indicadores.total_ativas}/><KpiCard label="Gasto mensal" value={reais(d.indicadores.gasto_mensal)}/><KpiCard label="Vencem em 30 dias" value={d.indicadores.vencendo_30} hint={d.indicadores.vencidas ? `${d.indicadores.vencidas} ${d.indicadores.vencidas === 1 ? 'vencida' : 'vencidas'}` : 'Nenhuma vencida'} danger={d.indicadores.vencidas > 0}/></section>
     <Card className="my-5 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto]"><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground"/><Input name="busca" autoComplete="off" aria-label="Buscar por nome" value={busca} onChange={(e)=>setBusca(e.target.value)} className="pl-9" placeholder="Buscar por nome…"/></div><Select name="status" autoComplete="off" aria-label="Filtrar por status" value={status} onChange={(e)=>setStatus(e.target.value)}><option value="">Todos os status</option>{d.listas.Status.map((i)=><option key={i}>{i}</option>)}</Select><Select name="categoria" autoComplete="off" aria-label="Filtrar por categoria" value={categoria} onChange={(e)=>setCategoria(e.target.value)}><option value="">Todas as categorias</option>{d.listas.Categorias.map((i)=><option key={i}>{i}</option>)}</Select><Select name="prazo" autoComplete="off" aria-label="Filtrar por vencimento" value={prazo} onChange={(e)=>setPrazo(e.target.value)}><option value="">Todos os vencimentos</option><option value="vencidas">Vencidas</option><option value="7">Até 7 dias</option><option value="30">Até 30 dias</option><option value="60">Até 60 dias</option><option value="90">Até 90 dias</option></Select>{(busca||status||categoria||prazo)&&<Button variant="ghost" onClick={()=>{setBusca('');setStatus('');setCategoria('');setPrazo('')}}>Limpar</Button>}</Card>
     <p aria-live="polite" className="mb-3 text-xs text-muted-foreground">{filtrado.length} de {d.itens.length} {d.itens.length === 1 ? 'assinatura' : 'assinaturas'}. Abra o menu de ações no fim de cada linha para editar.</p><DataTable data={filtrado} columns={columns} empty="Nenhuma assinatura corresponde aos filtros." label="Assinaturas" />
-    <Dialog open={form !== null} onOpenChange={(o)=>!o&&setForm(null)} title={form === 'nova' ? 'Nova assinatura' : 'Editar assinatura'} description="Os dados serão validados e gravados na mesma planilha." wide><AssinaturaForm item={form === 'nova' ? null : form} listas={d.listas} pessoas={d.pessoas} saving={salvar.isPending} serverError={salvar.error as Error|null} onSubmit={(v)=>salvar.mutate(v)} onCancel={()=>setForm(null)}/></Dialog>
+    <Dialog open={form !== null} onOpenChange={(o)=>!o&&setForm(null)} title={form === 'nova' ? 'Nova assinatura' : 'Editar assinatura'} description="Os vínculos com pessoas são definidos nos projetos." wide><AssinaturaForm item={form === 'nova' ? null : form} listas={d.listas} saving={salvar.isPending} serverError={salvar.error as Error|null} onSubmit={(v)=>salvar.mutate(v)} onCancel={()=>setForm(null)}/></Dialog>
     <Dialog open={!!excluir} onOpenChange={(o)=>!o&&setExcluir(null)} title="Excluir assinatura"><p className="text-sm">Tem certeza que deseja excluir <strong>{excluir?.Nome}</strong>?</p>{!!excluir?.usuarios_ids.length&&<p className="mt-3 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">Ela também será removida da lista de {excluir.usuarios_ids.length} {excluir.usuarios_ids.length === 1 ? 'pessoa' : 'pessoas'}.</p>}<div className="mt-6 flex flex-wrap justify-end gap-2"><Button variant="ghost" onClick={()=>setExcluir(null)}>Cancelar</Button><Button variant="danger" onClick={()=>excluir&&remover.mutate(excluir)} disabled={remover.isPending}>{remover.isPending ? 'Excluindo…' : 'Excluir assinatura'}</Button></div></Dialog>
     <Dialog open={!!pagar} onOpenChange={(o)=>!o&&setPagar(null)} title="Marcar como pago"><p className="text-sm">Registrar o pagamento de <strong>{pagar?.Nome}</strong>?</p><div className="mt-4 grid grid-cols-1 gap-3 rounded-xl bg-muted p-4 text-sm sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Vencimento atual</p><p className="mt-1 font-semibold">{data(pagar?.venc_data)}</p></div><div><p className="text-xs text-muted-foreground">Valor da cobrança</p><p className="mt-1 font-semibold tabular-nums">{reais(pagar?.valor_num)}</p></div></div><p className="mt-4 text-xs text-muted-foreground">O vencimento avança um ciclo e a operação fica registrada no histórico.</p><div className="mt-6 flex flex-wrap justify-end gap-2"><Button variant="ghost" onClick={()=>setPagar(null)}>Cancelar</Button><Button variant="primary" onClick={()=>pagar&&pagamento.mutate(pagar)} disabled={pagamento.isPending}>{pagamento.isPending ? 'Registrando…' : 'Confirmar pagamento'}</Button></div></Dialog>
     <HistoricoDialog item={historico} onClose={()=>setHistorico(null)}/>

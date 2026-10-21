@@ -12,10 +12,12 @@ from servicos import planilha
 from servicos.cadastros import agora
 from servicos.esquema import (
     ABA_ASSINATURAS,
+    ABA_EQUIPE,
     ABA_FUNCIONARIOS,
     ABA_HISTORICO,
     ABA_PROJETOS,
     ABA_USOS_PROJETO,
+    ABA_USUARIOS,
 )
 
 
@@ -27,6 +29,8 @@ class Base:
     listas: dict[str, list[str]]
     projetos: pd.DataFrame
     usos_projeto: pd.DataFrame
+    equipe: pd.DataFrame
+    usuarios: pd.DataFrame
 
     @property
     def nomes_assinaturas(self) -> list[str]:
@@ -44,6 +48,8 @@ def base() -> Base:
         listas=planilha.listas(),
         projetos=planilha.ler(ABA_PROJETOS),
         usos_projeto=planilha.ler(ABA_USOS_PROJETO),
+        equipe=planilha.ler(ABA_EQUIPE),
+        usuarios=planilha.ler(ABA_USUARIOS),
     )
 
 

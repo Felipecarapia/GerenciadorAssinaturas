@@ -10,7 +10,7 @@ from componentes.ui import base, controle_ver_mais, erro_campo, limitar_itens
 from servicos import cadastros, planilha
 from servicos import calculos as calc
 from servicos.cadastros import ConflitoEdicao, ErroValidacao
-from servicos.esquema import ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_PROJETOS
+from servicos.esquema import ABA_ASSINATURAS, ABA_FUNCIONARIOS
 
 PREFIXO = "dlg_"
 
@@ -97,16 +97,6 @@ def _form_assinatura(original: dict | None):
     o = original or {}
     _mostrar_conflito()
 
-    func = b.funcionarios
-    ids = func["ID"].astype(str).tolist() if not func.empty else []
-    nomes_por_id = dict(zip(ids, func["Nome completo"])) if ids else {}
-    atuais = []
-    if original:
-        atuais = calc.usuarios_por_assinatura(func).get(str(o.get("Nome", "")), [])
-
-    if not ids:
-        st.warning("Cadastre pelo menos uma pessoa antes: toda assinatura precisa de 1 usuário.",
-                   icon=":material/person_add:")
 
     with st.form(PREFIXO + "form_ass", border=False):
         c1, c2 = st.columns([2, 1])
@@ -148,16 +138,10 @@ def _form_assinatura(original: dict | None):
                                   key=PREFIXO + "status", placeholder="Escolha")
             erro_campo(erros, "Status")
 
-        usuarios = st.multiselect(
-            "Usuários * (mínimo 1)", ids, default=[i for i in atuais if i in ids],
-            format_func=lambda i: nomes_por_id.get(i, i), key=PREFIXO + "usuarios",
-            placeholder="Escolha quem usa esta assinatura",
-        )
-        erro_campo(erros, "Usuários")
+        st.caption("Quem usa a assinatura é definido na equipe dos projetos ativos.")
         st.caption("O nome não pode ter vírgula: a planilha usa vírgula para separar as escolhas.")
 
-        salvar = st.form_submit_button("Salvar", type="primary", icon=":material/save:",
-                                       disabled=not ids)
+        salvar = st.form_submit_button("Salvar", type="primary", icon=":material/save:")
 
     if salvar:
         st.session_state.pop(PREFIXO + "erros", None)
@@ -166,7 +150,7 @@ def _form_assinatura(original: dict | None):
                  "Valor (R$)": valor, "Vencimento": venc, "Status": status}
         try:
             with st.spinner("Gravando na planilha..."):
-                cadastros.salvar_assinatura(dados, usuarios, original)
+                cadastros.salvar_assinatura(dados, original=original)
         except Exception as exc:  # noqa: BLE001
             _tratar_falha(exc)
         avisar_depois(f"Assinatura “{nome.strip()}” salva.")
@@ -300,13 +284,6 @@ def _form_pessoa(original: dict | None):
     o = original or {}
     _mostrar_conflito()
 
-    opcoes = b.nomes_assinaturas
-    escolhidas = calc.separar_lista(o.get("Assinaturas"))
-    invalidas = [n for n in escolhidas if n not in opcoes]
-    if invalidas:
-        st.warning("Estas escolhas não existem mais como assinatura e serão removidas ao salvar: "
-                   + ", ".join(invalidas), icon=":material/link_off:")
-
     with st.form(PREFIXO + "form_pessoa", border=False):
         c1, c2 = st.columns(2)
         with c1:
@@ -325,8 +302,7 @@ def _form_pessoa(original: dict | None):
             erro_campo(erros, "Departamento")
         with c2:
             cargo = st.text_input("Cargo", value=str(o.get("Cargo", "") or ""), key=PREFIXO + "cargo")
-        assinaturas = st.multiselect("Assinaturas", opcoes, default=[n for n in escolhidas if n in opcoes],
-                                     key=PREFIXO + "assinaturas", placeholder="Escolha as ferramentas que a pessoa usa")
+        st.caption("As assinaturas vêm dos projetos ativos em que a pessoa está.")
         salvar = st.form_submit_button("Salvar", type="primary", icon=":material/save:")
 
     if salvar:
@@ -335,7 +311,7 @@ def _form_pessoa(original: dict | None):
         dados = {"Nome completo": nome, "E-mail": email, "Departamento": dep, "Cargo": cargo}
         try:
             with st.spinner("Gravando na planilha..."):
-                cadastros.salvar_pessoa(dados, assinaturas, original)
+                cadastros.salvar_pessoa(dados, original=original)
         except Exception as exc:  # noqa: BLE001
             _tratar_falha(exc)
         avisar_depois(f"{' '.join(nome.split())} salvo(a).")
@@ -357,118 +333,6 @@ def _dialogo_excluir_pessoa():
     st.caption("Os desvínculos das assinaturas ficam registrados no Histórico.")
     c1, c2 = st.columns(2)
     if c1.button("Cancelar", width="stretch"):
-        _limpar_estado()
-        st.rerun()
-
-
-# --------------------------------------------------------------------------
-# Projeto
-# --------------------------------------------------------------------------
-def abrir_projeto(id_: str | None = None):
-    _limpar_estado()
-    if id_ is None:
-        st.session_state[PREFIXO + "projeto_original"] = None
-        _dialogo_projeto()
-        return
-    original = planilha.ler_registro(ABA_PROJETOS, id_)
-    if original is None:
-        st.toast("Esse projeto não existe mais na planilha.", icon=":material/warning:")
-        return
-    st.session_state[PREFIXO + "projeto_original"] = original
-    _dialogo_projeto()
-
-
-@st.dialog("Projeto", width="large")
-def _dialogo_projeto():
-    original = st.session_state.get(PREFIXO + "projeto_original")
-    o = original or {}
-    erros = st.session_state.get(PREFIXO + "erros", {})
-    _mostrar_conflito()
-    b = base()
-    ass_ids = b.assinaturas["ID"].astype(str).tolist() if not b.assinaturas.empty else []
-    nomes = dict(zip(ass_ids, b.assinaturas["Nome"].astype(str)))
-    atuais = []
-    if original and not b.usos_projeto.empty:
-        atuais = b.usos_projeto[
-            b.usos_projeto["Projeto ID"].astype(str) == str(original["ID"])
-        ]["Assinatura ID"].astype(str).tolist()
-
-    with st.form(PREFIXO + "form_projeto", border=False):
-        c1, c2 = st.columns(2)
-        nome = c1.text_input("Nome do projeto *", value=str(o.get("Nome", "") or ""))
-        cliente = c2.text_input("Cliente", value=str(o.get("Cliente", "") or ""))
-        erro_campo(erros, "Nome")
-        c1, c2 = st.columns(2)
-        responsavel = c1.text_input("Responsável", value=str(o.get("Responsável", "") or ""))
-        deps = _opcoes_com_atual(b.listas["Departamentos"], o.get("Departamento"))
-        departamento = c2.selectbox("Departamento", deps, index=_indice(deps, o.get("Departamento")),
-                                    placeholder="Escolha")
-        status_op = _opcoes_com_atual(["Ativo", "Pausado"], o.get("Status"))
-        status = st.selectbox("Status *", status_op,
-                              index=_indice(status_op, o.get("Status") or "Ativo"))
-        escolhidas = st.multiselect("Assinaturas usadas no projeto *", ass_ids,
-                                    default=[i for i in atuais if i in ass_ids],
-                                    format_func=lambda i: nomes.get(i, i),
-                                    placeholder="Selecione uma ou mais assinaturas")
-        erro_campo(erros, "Assinaturas")
-        observacoes = st.text_area("Observações", value=str(o.get("Observações", "") or ""))
-        salvar = st.form_submit_button("Salvar projeto", type="primary", icon=":material/save:")
-    if salvar:
-        dados = {"Nome": nome, "Cliente": cliente, "Responsável": responsavel,
-                 "Departamento": departamento,
-                 "Status": status, "Observações": observacoes}
-        try:
-            cadastros.salvar_projeto(dados, escolhidas, original)
-        except Exception as exc:  # noqa: BLE001
-            _tratar_falha(exc)
-        avisar_depois(f"Projeto “{nome.strip()}” salvo.")
-        _limpar_estado()
-        st.rerun()
-
-
-def confirmar_exclusao_projeto(original: dict):
-    st.session_state[PREFIXO + "excluir_projeto"] = original
-    _dialogo_excluir_projeto()
-
-
-def confirmar_conclusao_projeto(original: dict):
-    st.session_state[PREFIXO + "concluir_projeto"] = original
-    _dialogo_concluir_projeto()
-
-
-@st.dialog("Concluir projeto")
-def _dialogo_concluir_projeto():
-    original = st.session_state[PREFIXO + "concluir_projeto"]
-    st.markdown(f"Deseja marcar o projeto **{original['Nome']}** como concluído?")
-    st.caption("Ele continuará disponível para consulta, mas deixará de participar da divisão dos custos ativos.")
-    c1, c2 = st.columns(2)
-    if c1.button("Cancelar", width="stretch"):
-        _limpar_estado()
-        st.rerun()
-    if c2.button("Marcar como concluído", type="primary", icon=":material/task_alt:", width="stretch"):
-        try:
-            cadastros.concluir_projeto(original)
-        except Exception as exc:  # noqa: BLE001
-            _tratar_falha(exc)
-        avisar_depois(f"Projeto “{original['Nome']}” concluído.", ":material/task_alt:")
-        _limpar_estado()
-        st.rerun()
-
-
-@st.dialog("Excluir projeto")
-def _dialogo_excluir_projeto():
-    original = st.session_state[PREFIXO + "excluir_projeto"]
-    st.warning(f"Excluir o projeto **{original['Nome']}** e todos os seus vínculos?", icon=":material/warning:")
-    c1, c2 = st.columns(2)
-    if c1.button("Cancelar", width="stretch"):
-        _limpar_estado()
-        st.rerun()
-    if c2.button("Excluir projeto", type="primary", icon=":material/delete:", width="stretch"):
-        try:
-            cadastros.excluir_projeto(original)
-        except Exception as exc:  # noqa: BLE001
-            _tratar_falha(exc)
-        avisar_depois("Projeto excluído.", ":material/delete:")
         _limpar_estado()
         st.rerun()
     if c2.button(f"Excluir {nome.split()[0] if nome.split() else ''}", type="primary",

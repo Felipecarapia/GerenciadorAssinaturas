@@ -4,11 +4,11 @@ Evita copiar campo por campo (a private_key quebra fácil). Uso:
 
     python scripts/gerar_secrets.py
 
-O script pergunta o caminho do .json, o link da planilha e a senha do app.
+O script pergunta o caminho do .json e o link da planilha. As contas de acesso
+são criadas separadamente por ``scripts/criar_usuarios.py``.
 """
 from __future__ import annotations
 
-import getpass
 import json
 import sys
 import tomllib
@@ -41,17 +41,10 @@ def main():
     if "docs.google.com/spreadsheets" not in url and len(url) < 20:
         sys.exit("Link da planilha inválido.")
 
-    senha = getpass.getpass("Senha de acesso ao app (não aparece ao digitar): ")
-    if len(senha) < 8:
-        sys.exit("Use uma senha com pelo menos 8 caracteres.")
-    if senha != getpass.getpass("Repita a senha: "):
-        sys.exit("As senhas não conferem.")
-
     linhas = [
         "# Gerado por scripts/gerar_secrets.py. NUNCA envie este arquivo para o GitHub.",
         "",
         "[app]",
-        f"senha = {texto_toml(senha)}",
         'fuso = "America/Bahia"',
         "",
         "[planilha]",

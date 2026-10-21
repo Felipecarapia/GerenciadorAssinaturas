@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class LoginIn(BaseModel):
+    email: str
     senha: str
 
 
@@ -25,7 +26,6 @@ class AssinaturaDados(BaseModel):
 
 class AssinaturaIn(BaseModel):
     dados: AssinaturaDados
-    usuarios_ids: list[str] = []
     original: dict[str, Any] | None = None
 
 
@@ -40,7 +40,6 @@ class PessoaDados(BaseModel):
 
 class PessoaIn(BaseModel):
     dados: PessoaDados
-    assinaturas: list[str] = []
     original: dict[str, Any] | None = None
 
 
@@ -51,13 +50,17 @@ class ProjetoDados(BaseModel):
     cliente: str = Field(default="", alias="Cliente")
     responsavel: str = Field(default="", alias="Responsavel", validation_alias="Responsavel")
     departamento: str = Field(default="", alias="Departamento")
-    status: str | None = Field(default="Ativo", alias="Status")
     observacoes: str = Field(default="", alias="Observacoes")
+
+
+class MembroIn(BaseModel):
+    pessoa_id: str
+    assinaturas_ids: list[str] = Field(min_length=1)
 
 
 class ProjetoIn(BaseModel):
     dados: ProjetoDados
-    assinaturas_ids: list[str] = []
+    equipe: list[MembroIn] = Field(min_length=1)
     original: dict[str, Any] | None = None
 
 
@@ -65,5 +68,5 @@ class OriginalIn(BaseModel):
     original: dict[str, Any] | None = None
 
 
-class LimparEscolhasIn(BaseModel):
-    nomes_validos: list[str] | None = None
+class RecusaIn(OriginalIn):
+    motivo: str = Field(min_length=10)

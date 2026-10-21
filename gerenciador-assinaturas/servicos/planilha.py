@@ -265,7 +265,10 @@ def modo_local() -> bool:
 # --------------------------------------------------------------------------
 # Leitura
 # --------------------------------------------------------------------------
-PREFIXO_ID = {"Assinaturas": "A", "Funcionários": "F", "Projetos": "P", "Uso por projeto": "U"}
+PREFIXO_ID = {
+    "Assinaturas": "A", "Funcionários": "F", "Projetos": "P",
+    "Uso por projeto": "U", "Equipe do projeto": "E", "Usuários": "L",
+}
 
 
 def novo_id(aba: str = "") -> str:

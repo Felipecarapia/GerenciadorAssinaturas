@@ -17,7 +17,8 @@ export function Badge({ children, tone = 'neutral', className }: { children: Rea
 export const statusTone = (status: string) => {
   const value = status.toLocaleLowerCase('pt-BR')
   if (value.includes('ativa') || value === 'ativo') return 'green' as const
-  if (value.includes('teste') || value.includes('paus')) return 'yellow' as const
+  if (value.includes('teste') || value.includes('paus') || value.includes('pendent')) return 'yellow' as const
+  if (value.includes('recus')) return 'red' as const
   if (value.includes('cancel') || value.includes('conclu')) return 'neutral' as const
   return 'blue' as const
 }

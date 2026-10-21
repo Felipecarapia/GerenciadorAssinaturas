@@ -11,6 +11,7 @@ from api.modelos import AssinaturaIn, OriginalIn
 from servicos import cadastros, calculos as calc, planilha
 from servicos.cadastros import agora
 from servicos.esquema import ABA_ASSINATURAS
+from servicos.esquema import EQ_VALENDO, PROJ_CONCLUIDO
 from servicos.relatorios import tabela_xlsx
 
 router = APIRouter(prefix="/api/assinaturas", tags=["assinaturas"], dependencies=[Depends(exigir_sessao)])
@@ -20,10 +21,23 @@ def _payload():
     dados = base()
     usuarios = calc.usuarios_por_assinatura(dados.funcionarios)
     projetos = calc.projetos_por_assinatura(dados.projetos, dados.usos_projeto)
+    pessoas = {str(p["ID"]): p for p in df_json(dados.funcionarios)}
+    projetos_reg = {str(p["ID"]): p for p in df_json(dados.projetos)}
+    usada_por: dict[str, list[dict]] = {}
+    for linha in df_json(dados.equipe):
+        projeto = projetos_reg.get(str(linha.get("Projeto ID", "")), {})
+        if linha.get("Situação") not in EQ_VALENDO or calc.normalizar(projeto.get("Status")) == calc.normalizar(PROJ_CONCLUIDO):
+            continue
+        pessoa = pessoas.get(str(linha.get("Pessoa ID", "")), {})
+        usada_por.setdefault(str(linha.get("Assinatura ID", "")), []).append({
+            "pessoa_id": str(linha.get("Pessoa ID", "")), "pessoa": pessoa.get("Nome completo", ""),
+            "projeto_id": str(linha.get("Projeto ID", "")), "projeto": projeto.get("Nome", ""),
+        })
     itens = []
     for registro in df_json(dados.assinaturas):
         registro["usuarios_ids"] = usuarios.get(str(registro.get("Nome", "")), [])
         registro["projetos"] = projetos.get(str(registro.get("ID", "")), [])
+        registro["usada_por"] = usada_por.get(str(registro.get("ID", "")), [])
         itens.append(registro)
     return dados, itens
 
@@ -51,7 +65,7 @@ def obter(id_: str):
 
 @router.post("", status_code=201)
 def criar(corpo: AssinaturaIn):
-    id_ = cadastros.salvar_assinatura(corpo.dados.model_dump(by_alias=True), corpo.usuarios_ids)
+    id_ = cadastros.salvar_assinatura(corpo.dados.model_dump(by_alias=True))
     return {"id": id_}
 
 
@@ -60,7 +74,7 @@ def editar(id_: str, corpo: AssinaturaIn):
     original = corpo.original or planilha.ler_registro(ABA_ASSINATURAS, id_)
     if original is None:
         raise HTTPException(404, "Assinatura nao encontrada.")
-    id_salvo = cadastros.salvar_assinatura(corpo.dados.model_dump(by_alias=True), corpo.usuarios_ids, original)
+    id_salvo = cadastros.salvar_assinatura(corpo.dados.model_dump(by_alias=True), original=original)
     return {"id": id_salvo}
 
 

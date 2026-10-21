@@ -1,4 +1,4 @@
-"""Prepara a planilha do Google com as 4 abas, listas suspensas, validações e proteções.
+"""Prepara a planilha do Google com as abas, listas suspensas, validações e proteções.
 
 Uso (na pasta do projeto, com .streamlit/secrets.toml preenchido):
 
@@ -23,8 +23,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from servicos.esquema import (  # noqa: E402
-    ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_LISTAS, ABA_PROJETOS,
-    ABA_USOS_PROJETO, ABAS_COM_ID, COLUNAS, LISTAS_PADRAO,
+    ABA_EQUIPE, ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_LISTAS, ABA_PROJETOS,
+    ABA_USOS_PROJETO, ABA_USUARIOS, ABAS_COM_ID, COLUNAS, LISTAS_PADRAO,
 )
 
 
@@ -110,7 +110,7 @@ def main():
                                "fields": "userEnteredFormat.numberFormat"}}
 
     A, F, H, L = ABA_ASSINATURAS, ABA_FUNCIONARIOS, ABA_HISTORICO, ABA_LISTAS
-    P, U = ABA_PROJETOS, ABA_USOS_PROJETO
+    P, U, M, USR = ABA_PROJETOS, ABA_USOS_PROJETO, ABA_EQUIPE, ABA_USUARIOS
     req = [
         {"updateSpreadsheetProperties": {"properties": {"locale": "pt_BR", "timeZone": fuso},
                                          "fields": "locale,timeZone"}},
@@ -128,6 +128,11 @@ def main():
                                   "strict": True}, "Número maior que zero"),
         validar(A, "Vencimento", {"condition": {"type": "DATE_IS_VALID"}, "strict": True}, "Data dd/mm/aaaa"),
         validar(F, "E-mail", {"condition": {"type": "TEXT_IS_EMAIL"}, "strict": True}, "E-mail válido"),
+        validar(USR, "E-mail", {"condition": {"type": "TEXT_IS_EMAIL"}, "strict": True}, "E-mail válido"),
+        validar(USR, "Perfil", {"condition": {"type": "ONE_OF_LIST", "values": [
+            {"userEnteredValue": "financeiro"}, {"userEnteredValue": "suporte"}]}, "strict": True}),
+        validar(USR, "Ativo", {"condition": {"type": "ONE_OF_LIST", "values": [
+            {"userEnteredValue": "Sim"}, {"userEnteredValue": "Não"}]}, "strict": True}),
         # formatos
         formato(A, "Valor (R$)", '"R$" #,##0.00', "CURRENCY"),
         formato(A, "Vencimento", "dd/mm/yyyy", "DATE"),
@@ -137,9 +142,16 @@ def main():
         formato(P, "Data de início", "dd/mm/yyyy", "DATE"),
         formato(P, "Data de término", "dd/mm/yyyy", "DATE"),
         formato(P, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(P, "Solicitado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(P, "Aprovado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(P, "Recusado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
         formato(U, "Data de início", "dd/mm/yyyy", "DATE"),
         formato(U, "Data de término", "dd/mm/yyyy", "DATE"),
         formato(U, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(M, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(M, "Proposto em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(USR, "Último acesso", "dd/mm/yyyy hh:mm", "DATE_TIME"),
+        formato(USR, "Cadastrado em", "dd/mm/yyyy hh:mm", "DATE_TIME"),
     ]
     for nome, ws in abas.items():
         n = len(COLUNAS[nome])

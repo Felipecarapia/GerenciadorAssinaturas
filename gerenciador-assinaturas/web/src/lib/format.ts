@@ -1,16 +1,31 @@
 export const reais = (valor: number | string | null | undefined) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor || 0))
 
-export const data = (valor: string | null | undefined) => {
+const MILISSEGUNDOS_POR_DIA = 86_400_000
+const EPOCA_GOOGLE_SHEETS = Date.UTC(1899, 11, 30)
+
+const dataDoGoogleSheets = (valor: number) => {
+  const utc = new Date(EPOCA_GOOGLE_SHEETS + valor * MILISSEGUNDOS_POR_DIA)
+  return new Date(
+    utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate(),
+    utc.getUTCHours(), utc.getUTCMinutes(), utc.getUTCSeconds(), utc.getUTCMilliseconds(),
+  )
+}
+
+export const data = (valor: unknown) => {
   if (!valor) return '—'
-  const iso = /^\d{4}-\d{2}-\d{2}$/.test(valor) ? `${valor}T12:00:00` : valor
-  const parsed = new Date(iso)
+  const texto = String(valor)
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(texto) ? `${texto}T12:00:00` : texto
+  const parsed = typeof valor === 'number' ? dataDoGoogleSheets(valor) : new Date(iso)
   return Number.isNaN(parsed.getTime()) ? String(valor) : new Intl.DateTimeFormat('pt-BR').format(parsed)
 }
 
-export const dataHora = (valor: string | null | undefined) => {
+export const dataHora = (valor: unknown) => {
   if (!valor) return '—'
-  const parsed = new Date(valor.includes('T') ? valor : valor.replace(' ', 'T'))
+  const texto = String(valor)
+  const parsed = typeof valor === 'number'
+    ? dataDoGoogleSheets(valor)
+    : new Date(texto.includes('T') ? texto : texto.replace(' ', 'T'))
   return Number.isNaN(parsed.getTime())
     ? String(valor)
     : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(parsed)

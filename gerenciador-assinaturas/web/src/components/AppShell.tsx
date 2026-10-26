@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import { BarChart3, BellRing, ChevronsLeft, ClipboardClock, FileText, FolderKanban, LayoutDashboard, LogOut, Menu, Moon, RefreshCcw, Sun, TriangleAlert, Users, X } from 'lucide-react'
+import { BarChart3, BellRing, ChevronsLeft, ClipboardClock, FileText, FolderKanban, LayoutDashboard, LogOut, Menu, Moon, RefreshCcw, Sun, Users, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
@@ -11,8 +11,8 @@ import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 
 const navegacao = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard, grupo: 'Visão geral' },
-  { label: 'Assinaturas', href: '/assinaturas', icon: BarChart3, grupo: 'Gestão' },
+  { label: 'Assinaturas', href: '/assinaturas', icon: BarChart3, grupo: 'Visão geral' },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, grupo: 'Visão geral' },
   { label: 'Pessoas', href: '/pessoas', icon: Users, grupo: 'Gestão' },
   { label: 'Projetos', href: '/projetos', icon: FolderKanban, grupo: 'Gestão' },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, grupo: 'Análise e controle' },
@@ -95,7 +95,7 @@ export function AppShell() {
               : <p className="mb-1.5 px-3 text-xs font-medium text-sidebar-muted">{grupo}</p>}
             <div className="space-y-0.5">
               {navegacao.filter((item) => item.grupo === grupo).map(({ label, href, icon: Icon }) => {
-                const ativo = href === '/' ? pathname === '/' : pathname.startsWith(href)
+                const ativo = pathname === href || pathname.startsWith(`${href}/`)
                 const badge = label === 'Pendências' ? pendencias : label === 'Projetos' && sessao.data?.usuario.perfil === 'financeiro' ? (resumo.data?.projetos_pendentes ?? 0) : 0
                 const temBadge = badge > 0
                 return <Link key={href} to={href} title={compacto ? (temBadge ? `${label} (${badge})` : label) : undefined} aria-current={ativo ? 'page' : undefined} onClick={() => setMobile(false)} className={cn(itemBase, 'relative font-medium', compacto ? 'justify-center px-0' : 'px-3', ativo ? 'bg-primary text-white shadow-[0_6px_20px_-8px_var(--primary)]' : 'text-sidebar-foreground/70 hover:bg-sidebar-hover hover:text-sidebar-foreground')}>
@@ -112,14 +112,6 @@ export function AppShell() {
       </nav>
       <div className="space-y-3 p-3">
         {!compacto && sessao.data?.usuario && <div className="whitespace-normal border-b border-sidebar-border px-3 pb-3"><p className="truncate text-sm font-semibold">{sessao.data.usuario.nome}</p><p className="mt-0.5 truncate text-xs text-sidebar-muted">{sessao.data.usuario.email}</p><Badge tone={sessao.data.usuario.perfil === 'financeiro' ? 'green' : 'blue'} className="mt-2">{sessao.data.usuario.perfil === 'financeiro' ? 'Financeiro' : 'Suporte'}</Badge></div>}
-        {pendencias > 0 && !compacto && (
-          <div className="whitespace-normal rounded-[var(--radius)] border border-sidebar-border bg-sidebar-hover p-4">
-            <span className="grid size-9 place-items-center rounded-xl text-white" style={{ background: 'var(--gradiente-marca)' }}><TriangleAlert aria-hidden="true" className="size-[18px]" /></span>
-            <p className="mt-3 text-sm font-semibold">{pendencias} {pendencias === 1 ? 'pendência' : 'pendências'} na planilha</p>
-            <p className="mt-1 text-xs leading-relaxed text-sidebar-muted">Linhas com dados faltando ou inválidos ficam fora dos cálculos.</p>
-            <Link to="/pendencias" onClick={() => setMobile(false)} className="mt-3 inline-flex h-8 items-center rounded-lg bg-card px-3 text-xs font-semibold text-foreground ring-1 ring-border transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Revisar linhas</Link>
-          </div>
-        )}
         <div className="space-y-0.5">
           <button role="switch" aria-checked={dark} title={compacto ? 'Tema escuro' : undefined} className={cn(itemBase, 'w-full text-sidebar-foreground/70 hover:bg-sidebar-hover hover:text-sidebar-foreground', compacto ? 'justify-center px-0' : 'px-3')} onClick={() => setDark(!dark)}>
             {dark ? <Moon aria-hidden="true" className="size-[18px] shrink-0" /> : <Sun aria-hidden="true" className="size-[18px] shrink-0" />}<span className={cn(compacto && 'sr-only')}>Tema escuro</span>

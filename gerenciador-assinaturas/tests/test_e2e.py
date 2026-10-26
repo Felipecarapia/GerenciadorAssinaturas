@@ -84,7 +84,7 @@ def _entrar(page, url, perfil="suporte"):
     page.get_by_label("E-mail").fill(f"{perfil}@reconcavo.org.br")
     page.get_by_label("Senha", exact=True).fill("demo")
     page.get_by_role("button", name="Acessar plataforma").click()
-    expect(page.get_by_role("heading", name="Dashboard")).to_be_visible(timeout=20_000)
+    expect(page.get_by_role("heading", name="Assinaturas", exact=True)).to_be_visible(timeout=20_000)
 
 
 def _sem_estouro_horizontal(page):
@@ -104,6 +104,7 @@ def test_login_recusa_senha_errada(servidor, page):
 def test_percorre_telas(servidor, page):
     page.set_viewport_size({"width": 1440, "height": 1000})
     _entrar(page, servidor)
+    page.get_by_role("link", name="Dashboard").click()
     expect(page.get_by_text("Gasto mensal").first).to_be_visible()
     expect(page.get_by_text("Alertas de vencimento")).to_be_visible()
     _print(page, "01_dashboard_react")
@@ -148,6 +149,8 @@ def test_cadastrar_assinatura_pelo_dialogo(servidor, page):
 def test_celular(servidor, page):
     page.set_viewport_size({"width": 390, "height": 844})
     _entrar(page, servidor)
+    page.get_by_role("button", name="Abrir menu").click()
+    page.get_by_role("link", name="Dashboard").click()
     expect(page.get_by_text("Gasto mensal").first).to_be_visible()
     _sem_estouro_horizontal(page)
     _print(page, "09_celular_react")
@@ -156,6 +159,7 @@ def test_celular(servidor, page):
 def test_estados_visuais_e_menu_de_acoes(servidor, page):
     page.set_viewport_size({"width": 1440, "height": 900})
     _entrar(page, servidor)
+    page.get_by_role("link", name="Dashboard").click()
 
     card = page.get_by_test_id("featured-metric")
     destaque = page.get_by_test_id("featured-metric-accent")

@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router'
 import { AppShell } from './components/AppShell'
 import { LoginPage } from './routes/Login'
 
@@ -14,7 +14,8 @@ const rootRoute = createRootRoute({ component: () => <Outlet /> })
 const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login', component: LoginPage })
 const appRoute = createRoute({ getParentRoute: () => rootRoute, id: 'app', component: AppShell })
 
-const dashboardRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: DashboardPage })
+const indexRoute = createRoute({ getParentRoute: () => appRoute, path: '/', beforeLoad: () => { throw redirect({ to: '/assinaturas', replace: true }) } })
+const dashboardRoute = createRoute({ getParentRoute: () => appRoute, path: '/dashboard', component: DashboardPage })
 const assinaturasRoute = createRoute({ getParentRoute: () => appRoute, path: '/assinaturas', component: AssinaturasPage })
 const pessoasRoute = createRoute({ getParentRoute: () => appRoute, path: '/pessoas', component: PessoasPage })
 const projetosRoute = createRoute({ getParentRoute: () => appRoute, path: '/projetos', component: ProjetosPage })
@@ -24,7 +25,7 @@ const pendenciasRoute = createRoute({ getParentRoute: () => appRoute, path: '/pe
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appRoute.addChildren([dashboardRoute, assinaturasRoute, pessoasRoute, projetosRoute, relatoriosRoute, historicoRoute, pendenciasRoute]),
+  appRoute.addChildren([indexRoute, dashboardRoute, assinaturasRoute, pessoasRoute, projetosRoute, relatoriosRoute, historicoRoute, pendenciasRoute]),
 ])
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' })

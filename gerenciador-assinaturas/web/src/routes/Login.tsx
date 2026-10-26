@@ -29,8 +29,8 @@ export function LoginPage() {
   const [senha, setSenha] = useState('')
   const [mostrar, setMostrar] = useState(false)
   useEffect(() => { document.title = 'Entrar · Licenzy' }, [])
-  useEffect(() => { api('/api/sessao').then(() => navigate({ to: '/' })).catch(() => undefined) }, [navigate])
-  const login = useMutation({ mutationFn: () => api('/api/login', { method: 'POST', body: JSON.stringify({ email, senha }) }), onSuccess: () => { client.clear(); navigate({ to: '/' }) } })
+  useEffect(() => { api('/api/sessao').then(() => navigate({ to: '/assinaturas' })).catch(() => undefined) }, [navigate])
+  const login = useMutation({ mutationFn: () => api('/api/login', { method: 'POST', body: JSON.stringify({ email, senha }) }), onSuccess: () => { client.clear(); navigate({ to: '/assinaturas' }) } })
   const erro = login.error instanceof ApiError ? login.error : null
   return <main className="grid min-h-screen bg-white lg:h-screen lg:grid-cols-[minmax(0,1.08fr)_minmax(460px,.92fr)] lg:overflow-hidden">
     <section className="relative hidden min-h-screen overflow-hidden bg-white text-[#172334] lg:block lg:h-screen lg:min-h-0"><KineticGrid tone="light"><div className="flex h-full flex-col p-8 xl:p-10"><div className="flex flex-1 flex-col items-center justify-center text-center"><div className="mb-10"><InstitutionalLogo /></div><p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#25649a]">Gestão corporativa de licenças</p><h2 className="max-w-[680px] text-4xl font-semibold leading-[1.12] tracking-[-0.035em] xl:text-5xl">Visibilidade para decidir. Controle para economizar.</h2></div><p className="mt-auto text-xs text-[#64748b]">Uma solução do Instituto Recôncavo de Tecnologia</p></div></KineticGrid></section>
